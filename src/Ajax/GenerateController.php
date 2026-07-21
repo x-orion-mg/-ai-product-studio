@@ -15,99 +15,101 @@ use Throwable;
  * Handles the product-generation AJAX flow: kick-off, progress polling and
  * cancellation.
  */
-final class GenerateController extends AbstractController
-{
-    private ProductGenerator $generator;
+final class GenerateController extends AbstractController {
 
-    private Logger $logger;
+	private ProductGenerator $generator;
 
-    public function __construct(ProductGenerator $generator, Logger $logger)
-    {
-        $this->generator = $generator;
-        $this->logger    = $logger;
-    }
+	private Logger $logger;
 
-    public function generate(): void
-    {
-        $this->guard();
+	public function __construct( ProductGenerator $generator, Logger $logger ) {
+		$this->generator = $generator;
+		$this->logger    = $logger;
+	}
 
-        $mainImageId = $this->postInt('main_image_id');
-        if ($mainImageId <= 0) {
-            $this->fail(__('Veuillez sélectionner une image principale.', 'ai-product-studio'));
-        }
+	public function generate(): void {
+		$this->guard();
 
-        $jobId = $this->post('job_id');
-        if ($jobId === '') {
-            $jobId = wp_generate_uuid4();
-        }
+		$mainImageId = $this->postInt( 'main_image_id' );
+		if ( $mainImageId <= 0 ) {
+			$this->fail( __( 'Veuillez sélectionner une image principale.', 'ai-product-studio' ) );
+		}
 
-        // Abort early if the user cancelled before we started heavy work.
-        if ($this->isCancelled($jobId)) {
-            $this->fail(__('Génération annulée.', 'ai-product-studio'));
-        }
+		$jobId = $this->post( 'job_id' );
+		if ( $jobId === '' ) {
+			$jobId = wp_generate_uuid4();
+		}
 
-        $request = new GenerationRequest(
-            mainImageId: $mainImageId,
-            galleryImageIds: $this->postIntList('gallery_image_ids'),
-            price: $this->postFloat('price'),
-            salePrice: $this->postFloat('sale_price') > 0 ? $this->postFloat('sale_price') : null,
-            userDescription: $this->postTextarea('user_description'),
-            relatedProductIds: $this->postIntList('related_product_ids'),
-            promptId: $this->postInt('prompt_id'),
-            provider: $this->post('provider', 'openai')
-        );
+		// Abort early if the user cancelled before we started heavy work.
+		if ( $this->isCancelled( $jobId ) ) {
+			$this->fail( __( 'Génération annulée.', 'ai-product-studio' ) );
+		}
 
-        try {
-            $result = $this->generator->generate($request, $jobId);
+		$request = new GenerationRequest(
+			mainImageId: $mainImageId,
+			galleryImageIds: $this->postIntList( 'gallery_image_ids' ),
+			price: $this->postFloat( 'price' ),
+			salePrice: $this->postFloat( 'sale_price' ) > 0 ? $this->postFloat( 'sale_price' ) : null,
+			userDescription: $this->postTextarea( 'user_description' ),
+			relatedProductIds: $this->postIntList( 'related_product_ids' ),
+			promptId: $this->postInt( 'prompt_id' ),
+			provider: $this->post( 'provider', 'openai' )
+		);
 
-            $product = get_post($result['product_id']);
+		try {
+			$result = $this->generator->generate( $request, $jobId );
 
-            $this->success([
-                'job_id'     => $jobId,
-                'product_id' => $result['product_id'],
-                'duration'   => $result['duration'],
-                'edit_link'  => get_edit_post_link($result['product_id'], 'raw'),
-                'view_link'  => get_permalink($result['product_id']),
-                'title'      => $product instanceof \WP_Post ? $product->post_title : '',
-            ]);
-        } catch (ValidationException $e) {
-            $this->fail($e->getMessage(), 422, ['errors' => $e->getErrors()]);
-        } catch (AIProductStudioException $e) {
-            $this->fail($e->getMessage(), 400);
-        } catch (Throwable $e) {
-            $this->logger->error('Erreur inattendue lors de la génération.', ['error' => $e->getMessage()]);
-            $this->fail(__('Une erreur inattendue est survenue.', 'ai-product-studio'), 500);
-        }
-    }
+			$product = get_post( $result['product_id'] );
 
-    public function progress(): void
-    {
-        $this->guard();
+			$this->success(
+				array(
+					'job_id'     => $jobId,
+					'product_id' => $result['product_id'],
+					'duration'   => $result['duration'],
+					'edit_link'  => get_edit_post_link( $result['product_id'], 'raw' ),
+					'view_link'  => get_permalink( $result['product_id'] ),
+					'title'      => $product instanceof \WP_Post ? $product->post_title : '',
+				)
+			);
+		} catch ( ValidationException $e ) {
+			$this->fail( $e->getMessage(), 422, array( 'errors' => $e->getErrors() ) );
+		} catch ( AIProductStudioException $e ) {
+			$this->fail( $e->getMessage(), 400 );
+		} catch ( Throwable $e ) {
+			$this->logger->error( 'Erreur inattendue lors de la génération.', array( 'error' => $e->getMessage() ) );
+			$this->fail( __( 'Une erreur inattendue est survenue.', 'ai-product-studio' ), 500 );
+		}
+	}
 
-        $jobId    = $this->post('job_id');
-        $progress = get_transient(ProductGenerator::PROGRESS_PREFIX . $jobId);
+	public function progress(): void {
+		$this->guard();
 
-        if (! is_array($progress)) {
-            $progress = ['steps' => [], 'status' => 'pending', 'current' => '', 'message' => ''];
-        }
+		$jobId    = $this->post( 'job_id' );
+		$progress = get_transient( ProductGenerator::PROGRESS_PREFIX . $jobId );
 
-        $this->success(['progress' => $progress]);
-    }
+		if ( ! is_array( $progress ) ) {
+			$progress = array(
+				'steps'   => array(),
+				'status'  => 'pending',
+				'current' => '',
+				'message' => '',
+			);
+		}
 
-    public function cancel(): void
-    {
-        $this->guard();
+		$this->success( array( 'progress' => $progress ) );
+	}
 
-        $jobId = $this->post('job_id');
-        if ($jobId !== '') {
-            set_transient('aips_cancel_' . $jobId, 1, 15 * MINUTE_IN_SECONDS);
-        }
+	public function cancel(): void {
+		$this->guard();
 
-        $this->success(['cancelled' => true]);
-    }
+		$jobId = $this->post( 'job_id' );
+		if ( $jobId !== '' ) {
+			set_transient( 'aips_cancel_' . $jobId, 1, 15 * MINUTE_IN_SECONDS );
+		}
 
-    private function isCancelled(string $jobId): bool
-    {
-        return (bool) get_transient('aips_cancel_' . $jobId);
-    }
+		$this->success( array( 'cancelled' => true ) );
+	}
+
+	private function isCancelled( string $jobId ): bool {
+		return (bool) get_transient( 'aips_cancel_' . $jobId );
+	}
 }

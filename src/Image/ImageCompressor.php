@@ -11,69 +11,67 @@ use AIProductStudio\Services\Settings;
  * Produces a compressed, base64-encoded copy of an attachment suitable for
  * sending to a multimodal AI (keeps requests small and fast).
  */
-final class ImageCompressor
-{
-    private Settings $settings;
+final class ImageCompressor {
 
-    public function __construct(Settings $settings)
-    {
-        $this->settings = $settings;
-    }
+	private Settings $settings;
 
-    /**
-     * @return array{mime: string, data: string}
-     *
-     * @throws WorkflowException
-     */
-    public function toBase64(int $attachmentId): array
-    {
-        $path = get_attached_file($attachmentId);
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
 
-        if ($path === false || ! file_exists($path)) {
-            throw new WorkflowException(
-                sprintf(
-                    /* translators: %d: attachment id. */
-                    __('Fichier image introuvable pour la pièce jointe #%d.', 'ai-product-studio'),
-                    $attachmentId
-                ),
-                'compress'
-            );
-        }
+	/**
+	 * @return array{mime: string, data: string}
+	 *
+	 * @throws WorkflowException
+	 */
+	public function toBase64( int $attachmentId ): array {
+		$path = get_attached_file( $attachmentId );
 
-        $maxWidth = (int) $this->settings->get('image_max_width', 1600);
-        $quality  = (int) $this->settings->get('image_quality', 82);
+		if ( $path === false || ! file_exists( $path ) ) {
+			throw new WorkflowException(
+				sprintf(
+					/* translators: %d: attachment id. */
+					__( 'Fichier image introuvable pour la pièce jointe #%d.', 'ai-product-studio' ),
+					$attachmentId
+				),
+				'compress'
+			);
+		}
 
-        $editor = wp_get_image_editor($path);
+		$maxWidth = (int) $this->settings->get( 'image_max_width', 1600 );
+		$quality  = (int) $this->settings->get( 'image_quality', 82 );
 
-        if (is_wp_error($editor)) {
-            // Fall back to the original bytes if the editor is unavailable.
-            $bytes = (string) file_get_contents($path);
+		$editor = wp_get_image_editor( $path );
 
-            return [
-                'mime' => (string) (mime_content_type($path) ?: 'image/jpeg'),
-                'data' => base64_encode($bytes),
-            ];
-        }
+		if ( is_wp_error( $editor ) ) {
+			// Fall back to the original bytes if the editor is unavailable.
+			$bytes = (string) file_get_contents( $path );
 
-        $editor->resize($maxWidth, $maxWidth, false);
-        $editor->set_quality($quality);
+			return array(
+				'mime' => (string) ( mime_content_type( $path ) ?: 'image/jpeg' ),
+				'data' => base64_encode( $bytes ),
+			);
+		}
 
-        $tmp = wp_tempnam('aips-img');
-        $saved = $editor->save($tmp, 'image/jpeg');
+		$editor->resize( $maxWidth, $maxWidth, false );
+		$editor->set_quality( $quality );
 
-        if (is_wp_error($saved) || ! isset($saved['path'])) {
-            throw new WorkflowException(
-                __('Impossible de compresser l\'image.', 'ai-product-studio'),
-                'compress'
-            );
-        }
+		$tmp   = wp_tempnam( 'aips-img' );
+		$saved = $editor->save( $tmp, 'image/jpeg' );
 
-        $bytes = (string) file_get_contents($saved['path']);
-        @unlink($saved['path']);
+		if ( is_wp_error( $saved ) || ! isset( $saved['path'] ) ) {
+			throw new WorkflowException(
+				__( 'Impossible de compresser l\'image.', 'ai-product-studio' ),
+				'compress'
+			);
+		}
 
-        return [
-            'mime' => 'image/jpeg',
-            'data' => base64_encode($bytes),
-        ];
-    }
+		$bytes = (string) file_get_contents( $saved['path'] );
+		@unlink( $saved['path'] );
+
+		return array(
+			'mime' => 'image/jpeg',
+			'data' => base64_encode( $bytes ),
+		);
+	}
 }

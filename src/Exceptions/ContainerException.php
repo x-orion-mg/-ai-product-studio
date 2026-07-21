@@ -7,6 +7,6 @@ namespace AIProductStudio\Exceptions;
 /**
  * Thrown when the service container cannot resolve a requested service.
  */
-final class ContainerException extends AIProductStudioException
-{
+final class ContainerException extends AIProductStudioException {
+
 }

@@ -9,35 +9,34 @@ namespace AIProductStudio\Image;
  * (dimensions, orientation, original filename). The heavy visual analysis is
  * performed by the multimodal model itself.
  */
-final class ImageAnalyzer
-{
-    /**
-     * @return array<string, mixed>
-     */
-    public function analyze(int $attachmentId): array
-    {
-        $meta = wp_get_attachment_metadata($attachmentId);
-        $file = get_attached_file($attachmentId);
+final class ImageAnalyzer {
 
-        $width  = is_array($meta) ? (int) ($meta['width'] ?? 0) : 0;
-        $height = is_array($meta) ? (int) ($meta['height'] ?? 0) : 0;
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function analyze( int $attachmentId ): array {
+		$meta = wp_get_attachment_metadata( $attachmentId );
+		$file = get_attached_file( $attachmentId );
 
-        $orientation = 'square';
-        if ($width > 0 && $height > 0) {
-            if ($width > $height) {
-                $orientation = 'landscape';
-            } elseif ($height > $width) {
-                $orientation = 'portrait';
-            }
-        }
+		$width  = is_array( $meta ) ? (int) ( $meta['width'] ?? 0 ) : 0;
+		$height = is_array( $meta ) ? (int) ( $meta['height'] ?? 0 ) : 0;
 
-        return [
-            'attachment_id' => $attachmentId,
-            'filename'      => $file !== false ? basename($file) : '',
-            'width'         => $width,
-            'height'        => $height,
-            'orientation'   => $orientation,
-            'mime'          => (string) get_post_mime_type($attachmentId),
-        ];
-    }
+		$orientation = 'square';
+		if ( $width > 0 && $height > 0 ) {
+			if ( $width > $height ) {
+				$orientation = 'landscape';
+			} elseif ( $height > $width ) {
+				$orientation = 'portrait';
+			}
+		}
+
+		return array(
+			'attachment_id' => $attachmentId,
+			'filename'      => $file !== false ? basename( $file ) : '',
+			'width'         => $width,
+			'height'        => $height,
+			'orientation'   => $orientation,
+			'mime'          => (string) get_post_mime_type( $attachmentId ),
+		);
+	}
 }

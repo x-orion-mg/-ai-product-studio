@@ -7,126 +7,121 @@ namespace AIProductStudio\Prompt;
 /**
  * Data-access layer for prompts (CRUD).
  */
-final class PromptRepository
-{
-    public static function tableName(): string
-    {
-        global $wpdb;
+final class PromptRepository {
 
-        return $wpdb->prefix . 'aips_prompts';
-    }
+	public static function tableName(): string {
+		global $wpdb;
 
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function create(array $data): int
-    {
-        global $wpdb;
+		return $wpdb->prefix . 'aips_prompts';
+	}
 
-        $now = current_time('mysql', true);
+	/**
+	 * @param array<string, mixed> $data
+	 */
+	public function create( array $data ): int {
+		global $wpdb;
 
-        $wpdb->insert(
-            self::tableName(),
-            [
-                'name'        => sanitize_text_field((string) ($data['name'] ?? '')),
-                'description' => sanitize_textarea_field((string) ($data['description'] ?? '')),
-                'content'     => (string) ($data['content'] ?? ''),
-                'is_active'   => ! empty($data['is_active']) ? 1 : 0,
-                'created_at'  => $now,
-                'updated_at'  => $now,
-            ],
-            ['%s', '%s', '%s', '%d', '%s', '%s']
-        );
+		$now = current_time( 'mysql', true );
 
-        return (int) $wpdb->insert_id;
-    }
+		$wpdb->insert(
+			self::tableName(),
+			array(
+				'name'        => sanitize_text_field( (string) ( $data['name'] ?? '' ) ),
+				'description' => sanitize_textarea_field( (string) ( $data['description'] ?? '' ) ),
+				'content'     => (string) ( $data['content'] ?? '' ),
+				'is_active'   => ! empty( $data['is_active'] ) ? 1 : 0,
+				'created_at'  => $now,
+				'updated_at'  => $now,
+			),
+			array( '%s', '%s', '%s', '%d', '%s', '%s' )
+		);
 
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function update(int $id, array $data): bool
-    {
-        global $wpdb;
+		return (int) $wpdb->insert_id;
+	}
 
-        $fields  = [];
-        $formats = [];
+	/**
+	 * @param array<string, mixed> $data
+	 */
+	public function update( int $id, array $data ): bool {
+		global $wpdb;
 
-        if (array_key_exists('name', $data)) {
-            $fields['name'] = sanitize_text_field((string) $data['name']);
-            $formats[]      = '%s';
-        }
-        if (array_key_exists('description', $data)) {
-            $fields['description'] = sanitize_textarea_field((string) $data['description']);
-            $formats[]             = '%s';
-        }
-        if (array_key_exists('content', $data)) {
-            $fields['content'] = (string) $data['content'];
-            $formats[]         = '%s';
-        }
-        if (array_key_exists('is_active', $data)) {
-            $fields['is_active'] = ! empty($data['is_active']) ? 1 : 0;
-            $formats[]           = '%d';
-        }
+		$fields  = array();
+		$formats = array();
 
-        if ($fields === []) {
-            return false;
-        }
+		if ( array_key_exists( 'name', $data ) ) {
+			$fields['name'] = sanitize_text_field( (string) $data['name'] );
+			$formats[]      = '%s';
+		}
+		if ( array_key_exists( 'description', $data ) ) {
+			$fields['description'] = sanitize_textarea_field( (string) $data['description'] );
+			$formats[]             = '%s';
+		}
+		if ( array_key_exists( 'content', $data ) ) {
+			$fields['content'] = (string) $data['content'];
+			$formats[]         = '%s';
+		}
+		if ( array_key_exists( 'is_active', $data ) ) {
+			$fields['is_active'] = ! empty( $data['is_active'] ) ? 1 : 0;
+			$formats[]           = '%d';
+		}
 
-        $fields['updated_at'] = current_time('mysql', true);
-        $formats[]            = '%s';
+		if ( $fields === array() ) {
+			return false;
+		}
 
-        return $wpdb->update(self::tableName(), $fields, ['id' => $id], $formats, ['%d']) !== false;
-    }
+		$fields['updated_at'] = current_time( 'mysql', true );
+		$formats[]            = '%s';
 
-    public function delete(int $id): bool
-    {
-        global $wpdb;
+		return $wpdb->update( self::tableName(), $fields, array( 'id' => $id ), $formats, array( '%d' ) ) !== false;
+	}
 
-        return $wpdb->delete(self::tableName(), ['id' => $id], ['%d']) !== false;
-    }
+	public function delete( int $id ): bool {
+		global $wpdb;
 
-    public function find(int $id): ?Prompt
-    {
-        global $wpdb;
+		return $wpdb->delete( self::tableName(), array( 'id' => $id ), array( '%d' ) ) !== false;
+	}
 
-        $table = self::tableName();
+	public function find( int $id ): ?Prompt {
+		global $wpdb;
 
-        $row = $wpdb->get_row(
-            $wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $id),
-            ARRAY_A
-        );
+		$table = self::tableName();
 
-        return is_array($row) ? Prompt::fromRow($row) : null;
-    }
+		$row = $wpdb->get_row(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $table is a trusted internal table name built from $wpdb->prefix.
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ),
+			ARRAY_A
+		);
 
-    /**
-     * @return array<int, Prompt>
-     */
-    public function all(bool $activeOnly = false): array
-    {
-        global $wpdb;
+		return is_array( $row ) ? Prompt::fromRow( $row ) : null;
+	}
 
-        $table = self::tableName();
-        $where = $activeOnly ? 'WHERE is_active = 1' : '';
+	/**
+	 * @return array<int, Prompt>
+	 */
+	public function all( bool $activeOnly = false ): array {
+		global $wpdb;
 
-        $rows = $wpdb->get_results("SELECT * FROM {$table} {$where} ORDER BY name ASC", ARRAY_A) ?: [];
+		$table = self::tableName();
+		$where = $activeOnly ? 'WHERE is_active = 1' : '';
 
-        return array_map([Prompt::class, 'fromRow'], $rows);
-    }
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $table/$where are trusted internal values (table name from $wpdb->prefix, static WHERE clause).
+		$rows = $wpdb->get_results( "SELECT * FROM {$table} {$where} ORDER BY name ASC", ARRAY_A ) ?: array();
 
-    public function firstActive(): ?Prompt
-    {
-        $all = $this->all(true);
+		return array_map( array( Prompt::class, 'fromRow' ), $rows );
+	}
 
-        return $all[0] ?? null;
-    }
+	public function firstActive(): ?Prompt {
+		$all = $this->all( true );
 
-    public function count(): int
-    {
-        global $wpdb;
+		return $all[0] ?? null;
+	}
 
-        $table = self::tableName();
+	public function count(): int {
+		global $wpdb;
 
-        return (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
-    }
+		$table = self::tableName();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $table is a trusted internal table name built from $wpdb->prefix.
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+	}
 }

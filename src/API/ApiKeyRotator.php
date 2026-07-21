@@ -15,52 +15,48 @@ use AIProductStudio\Services\Settings;
  * accumulated errors, then by least-recently used. A key that reaches the
  * configured error threshold is automatically deactivated.
  */
-final class ApiKeyRotator
-{
-    private ApiKeyRepository $repository;
+final class ApiKeyRotator {
 
-    private Settings $settings;
+	private ApiKeyRepository $repository;
 
-    public function __construct(ApiKeyRepository $repository, Settings $settings)
-    {
-        $this->repository = $repository;
-        $this->settings   = $settings;
-    }
+	private Settings $settings;
 
-    /**
-     * Return the ordered candidate keys for a provider.
-     *
-     * @return array<int, ApiKey>
-     *
-     * @throws ProviderException when no active key exists.
-     */
-    public function candidates(string $provider): array
-    {
-        $keys = $this->repository->activeForProvider($provider);
+	public function __construct( ApiKeyRepository $repository, Settings $settings ) {
+		$this->repository = $repository;
+		$this->settings   = $settings;
+	}
 
-        if ($keys === []) {
-            throw new ProviderException(
-                sprintf(
-                    /* translators: %s: provider slug. */
-                    __('Aucune clé API active pour le fournisseur « %s ». Ajoutez-en une dans l\'onglet API.', 'ai-product-studio'),
-                    $provider
-                )
-            );
-        }
+	/**
+	 * Return the ordered candidate keys for a provider.
+	 *
+	 * @return array<int, ApiKey>
+	 *
+	 * @throws ProviderException when no active key exists.
+	 */
+	public function candidates( string $provider ): array {
+		$keys = $this->repository->activeForProvider( $provider );
 
-        return $keys;
-    }
+		if ( $keys === array() ) {
+			throw new ProviderException(
+				sprintf(
+					/* translators: %s: provider slug. */
+					__( 'Aucune clé API active pour le fournisseur « %s ». Ajoutez-en une dans l\'onglet API.', 'ai-product-studio' ),
+					$provider
+				)
+			);
+		}
 
-    public function reportSuccess(ApiKey $key): void
-    {
-        $this->repository->markUsed($key->id);
-        $this->repository->resetErrors($key->id);
-    }
+		return $keys;
+	}
 
-    public function reportFailure(ApiKey $key): void
-    {
-        $threshold = (int) $this->settings->get('max_error_before_disable', 5);
-        $this->repository->markUsed($key->id);
-        $this->repository->incrementError($key->id, $threshold);
-    }
+	public function reportSuccess( ApiKey $key ): void {
+		$this->repository->markUsed( $key->id );
+		$this->repository->resetErrors( $key->id );
+	}
+
+	public function reportFailure( ApiKey $key ): void {
+		$threshold = (int) $this->settings->get( 'max_error_before_disable', 5 );
+		$this->repository->markUsed( $key->id );
+		$this->repository->incrementError( $key->id, $threshold );
+	}
 }

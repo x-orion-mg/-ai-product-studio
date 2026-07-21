@@ -11,31 +11,27 @@ use AIProductStudio\SEO\SeoGenerator;
 /**
  * Persists the AI-generated SEO metadata to the active SEO plugin.
  */
-final class SeoStep implements StepInterface
-{
-    private SeoGenerator $seo;
+final class SeoStep implements StepInterface {
 
-    public function __construct(SeoGenerator $seo)
-    {
-        $this->seo = $seo;
-    }
+	private SeoGenerator $seo;
 
-    public function key(): string
-    {
-        return 'seo';
-    }
+	public function __construct( SeoGenerator $seo ) {
+		$this->seo = $seo;
+	}
 
-    public function label(): string
-    {
-        return __('Génération SEO', 'ai-product-studio');
-    }
+	public function key(): string {
+		return 'seo';
+	}
 
-    public function handle(GenerationContext $context): void
-    {
-        if ($context->productId <= 0 || $context->productData === null) {
-            return;
-        }
+	public function label(): string {
+		return __( 'Génération SEO', 'ai-product-studio' );
+	}
 
-        $this->seo->apply($context->productId, $context->productData);
-    }
+	public function handle( GenerationContext $context ): void {
+		if ( $context->productId <= 0 || $context->productData === null ) {
+			return;
+		}
+
+		$this->seo->apply( $context->productId, $context->productData );
+	}
 }

@@ -10,44 +10,42 @@ use AIProductStudio\Core\Container;
  * Base class for admin pages. Pages prepare their data (controller role) and
  * delegate rendering to a template file, keeping business logic out of views.
  */
-abstract class AbstractPage
-{
-    protected Container $container;
+abstract class AbstractPage {
 
-    public function __construct(Container $container)
-    {
-        $this->container = $container;
-    }
+	protected Container $container;
 
-    abstract public function slug(): string;
+	public function __construct( Container $container ) {
+		$this->container = $container;
+	}
 
-    abstract public function title(): string;
+	abstract public function slug(): string;
 
-    abstract public function menuTitle(): string;
+	abstract public function title(): string;
 
-    /**
-     * Render the page. Prepares data then includes the matching template.
-     */
-    abstract public function render(): void;
+	abstract public function menuTitle(): string;
 
-    /**
-     * Include a template with the provided data extracted as variables.
-     *
-     * @param array<string, mixed> $data
-     */
-    protected function view(string $template, array $data = []): void
-    {
-        $file = AIPS_PLUGIN_DIR . 'templates/' . $template . '.php';
+	/**
+	 * Render the page. Prepares data then includes the matching template.
+	 */
+	abstract public function render(): void;
 
-        if (! is_readable($file)) {
-            printf('<div class="notice notice-error"><p>%s</p></div>', esc_html("Template introuvable : {$template}"));
+	/**
+	 * Include a template with the provided data extracted as variables.
+	 *
+	 * @param array<string, mixed> $data
+	 */
+	protected function view( string $template, array $data = array() ): void {
+		$file = AIPS_PLUGIN_DIR . 'templates/' . $template . '.php';
 
-            return;
-        }
+		if ( ! is_readable( $file ) ) {
+			printf( '<div class="notice notice-error"><p>%s</p></div>', esc_html( "Template introuvable : {$template}" ) );
+
+			return;
+		}
 
         // phpcs:ignore WordPress.PHP.DontExtract.extract_extract
-        extract($data, EXTR_SKIP);
+		extract( $data, EXTR_SKIP );
 
-        require $file;
-    }
+		require $file;
+	}
 }

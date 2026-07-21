@@ -11,51 +11,62 @@ use AIProductStudio\Models\AiResponse;
 /**
  * OpenAI Chat Completions provider with vision support.
  */
-final class OpenAIProvider extends AbstractProvider
-{
-    private const DEFAULT_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-    private const DEFAULT_MODEL    = 'gpt-4o-mini';
+final class OpenAIProvider extends AbstractProvider {
 
-    public function slug(): string
-    {
-        return 'openai';
-    }
+	private const DEFAULT_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+	private const DEFAULT_MODEL    = 'gpt-4o-mini';
 
-    public function label(): string
-    {
-        return 'OpenAI';
-    }
+	public function slug(): string {
+		return 'openai';
+	}
 
-    public function generate(ApiKey $key, string $prompt, array $images, array $options = []): AiResponse
-    {
-        $endpoint = $key->endpoint !== '' ? $key->endpoint : self::DEFAULT_ENDPOINT;
-        $model    = $key->model !== '' ? $key->model : self::DEFAULT_MODEL;
+	public function label(): string {
+		return 'OpenAI';
+	}
 
-        $content = [['type' => 'text', 'text' => $prompt]];
-        foreach ($images as $image) {
-            $content[] = [
-                'type'      => 'image_url',
-                'image_url' => ['url' => $this->dataUri($image)],
-            ];
-        }
+	public function generate( ApiKey $key, string $prompt, array $images, array $options = array() ): AiResponse {
+		$endpoint = $key->endpoint !== '' ? $key->endpoint : self::DEFAULT_ENDPOINT;
+		$model    = $key->model !== '' ? $key->model : self::DEFAULT_MODEL;
 
-        $body = [
-            'model'           => $model,
-            'messages'        => [['role' => 'user', 'content' => $content]],
-            'temperature'     => (float) ($options['temperature'] ?? 0.4),
-            'response_format' => ['type' => 'json_object'],
-        ];
+		$content = array(
+			array(
+				'type' => 'text',
+				'text' => $prompt,
+			),
+		);
+		foreach ( $images as $image ) {
+			$content[] = array(
+				'type'      => 'image_url',
+				'image_url' => array( 'url' => $this->dataUri( $image ) ),
+			);
+		}
 
-        $decoded = $this->post($endpoint, [
-            'Authorization' => 'Bearer ' . $key->apiKey,
-        ], $body);
+		$body = array(
+			'model'           => $model,
+			'messages'        => array(
+				array(
+					'role'    => 'user',
+					'content' => $content,
+				),
+			),
+			'temperature'     => (float) ( $options['temperature'] ?? 0.4 ),
+			'response_format' => array( 'type' => 'json_object' ),
+		);
 
-        $text = $decoded['choices'][0]['message']['content'] ?? null;
+		$decoded = $this->post(
+			$endpoint,
+			array(
+				'Authorization' => 'Bearer ' . $key->apiKey,
+			),
+			$body
+		);
 
-        if (! is_string($text) || $text === '') {
-            throw new ProviderException(__('OpenAI n\'a renvoyé aucun contenu.', 'ai-product-studio'));
-        }
+		$text = $decoded['choices'][0]['message']['content'] ?? null;
 
-        return new AiResponse($text, $this->slug(), $model, $decoded);
-    }
+		if ( ! is_string( $text ) || $text === '' ) {
+			throw new ProviderException( __( 'OpenAI n\'a renvoyé aucun contenu.', 'ai-product-studio' ) );
+		}
+
+		return new AiResponse( $text, $this->slug(), $model, $decoded );
+	}
 }

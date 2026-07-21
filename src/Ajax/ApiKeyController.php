@@ -10,82 +10,80 @@ use AIProductStudio\API\ApiKeyRepository;
 /**
  * CRUD AJAX endpoints for AI provider API keys.
  */
-final class ApiKeyController extends AbstractController
-{
-    private ApiKeyRepository $repository;
+final class ApiKeyController extends AbstractController {
 
-    private ProviderFactory $factory;
+	private ApiKeyRepository $repository;
 
-    public function __construct(ApiKeyRepository $repository, ProviderFactory $factory)
-    {
-        $this->repository = $repository;
-        $this->factory    = $factory;
-    }
+	private ProviderFactory $factory;
 
-    public function save(): void
-    {
-        $this->guard();
+	public function __construct( ApiKeyRepository $repository, ProviderFactory $factory ) {
+		$this->repository = $repository;
+		$this->factory    = $factory;
+	}
 
-        $provider = $this->post('provider');
-        if (! array_key_exists($provider, $this->factory->available())) {
-            $this->fail(__('Fournisseur IA invalide.', 'ai-product-studio'));
-        }
+	public function save(): void {
+		$this->guard();
 
-        $data = [
-            'provider'  => $provider,
-            'label'     => $this->post('label'),
-            'api_key'   => isset($_POST['api_key']) ? trim(wp_unslash((string) $_POST['api_key'])) : '',
-            'model'     => $this->post('model'),
-            'endpoint'  => esc_url_raw(wp_unslash((string) ($_POST['endpoint'] ?? ''))),
-            'priority'  => $this->postInt('priority', 10),
-            'is_active' => $this->postInt('is_active') === 1,
-        ];
+		$provider = $this->post( 'provider' );
+		if ( ! array_key_exists( $provider, $this->factory->available() ) ) {
+			$this->fail( __( 'Fournisseur IA invalide.', 'ai-product-studio' ) );
+		}
 
-        $id = $this->postInt('id');
+		$data = array(
+			'provider'  => $provider,
+			'label'     => $this->post( 'label' ),
+			'api_key'   => isset( $_POST['api_key'] ) ? trim( wp_unslash( (string) $_POST['api_key'] ) ) : '',
+			'model'     => $this->post( 'model' ),
+			'endpoint'  => esc_url_raw( wp_unslash( (string) ( $_POST['endpoint'] ?? '' ) ) ),
+			'priority'  => $this->postInt( 'priority', 10 ),
+			'is_active' => $this->postInt( 'is_active' ) === 1,
+		);
 
-        if ($id > 0) {
-            // Do not overwrite the stored key with an empty value on edit.
-            if ($data['api_key'] === '') {
-                unset($data['api_key']);
-            }
-            $this->repository->update($id, $data);
-        } else {
-            $id = $this->repository->create($data);
-        }
+		$id = $this->postInt( 'id' );
 
-        $this->success([
-            'id'      => $id,
-            'message' => __('Clé API enregistrée.', 'ai-product-studio'),
-        ]);
-    }
+		if ( $id > 0 ) {
+			// Do not overwrite the stored key with an empty value on edit.
+			if ( $data['api_key'] === '' ) {
+				unset( $data['api_key'] );
+			}
+			$this->repository->update( $id, $data );
+		} else {
+			$id = $this->repository->create( $data );
+		}
 
-    public function delete(): void
-    {
-        $this->guard();
+		$this->success(
+			array(
+				'id'      => $id,
+				'message' => __( 'Clé API enregistrée.', 'ai-product-studio' ),
+			)
+		);
+	}
 
-        $id = $this->postInt('id');
-        if ($id <= 0) {
-            $this->fail(__('Identifiant invalide.', 'ai-product-studio'));
-        }
+	public function delete(): void {
+		$this->guard();
 
-        $this->repository->delete($id);
+		$id = $this->postInt( 'id' );
+		if ( $id <= 0 ) {
+			$this->fail( __( 'Identifiant invalide.', 'ai-product-studio' ) );
+		}
 
-        $this->success(['message' => __('Clé API supprimée.', 'ai-product-studio')]);
-    }
+		$this->repository->delete( $id );
 
-    public function toggle(): void
-    {
-        $this->guard();
+		$this->success( array( 'message' => __( 'Clé API supprimée.', 'ai-product-studio' ) ) );
+	}
 
-        $id  = $this->postInt('id');
-        $key = $this->repository->find($id);
+	public function toggle(): void {
+		$this->guard();
 
-        if ($key === null) {
-            $this->fail(__('Clé introuvable.', 'ai-product-studio'));
-        }
+		$id  = $this->postInt( 'id' );
+		$key = $this->repository->find( $id );
 
-        $this->repository->update($id, ['is_active' => ! $key->isActive]);
+		if ( $key === null ) {
+			$this->fail( __( 'Clé introuvable.', 'ai-product-studio' ) );
+		}
 
-        $this->success(['is_active' => ! $key->isActive]);
-    }
+		$this->repository->update( $id, array( 'is_active' => ! $key->isActive ) );
+
+		$this->success( array( 'is_active' => ! $key->isActive ) );
+	}
 }

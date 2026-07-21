@@ -13,36 +13,34 @@ use AIProductStudio\Prompt\Prompt;
  * Mutable carrier passed through every pipeline step. Each step reads what it
  * needs and enriches the context for the next one, keeping steps decoupled.
  */
-final class GenerationContext
-{
-    public GenerationRequest $request;
+final class GenerationContext {
 
-    public ?Prompt $prompt = null;
+	public GenerationRequest $request;
 
-    /** @var array<int, array{mime: string, data: string}> */
-    public array $images = [];
+	public ?Prompt $prompt = null;
 
-    /** @var array<string, mixed> */
-    public array $analysis = [];
+	/** @var array<int, array{mime: string, data: string}> */
+	public array $images = array();
 
-    public string $compiledPrompt = '';
+	/** @var array<string, mixed> */
+	public array $analysis = array();
 
-    public ?AiResponse $aiResponse = null;
+	public string $compiledPrompt = '';
 
-    public ?ProductData $productData = null;
+	public ?AiResponse $aiResponse = null;
 
-    public int $productId = 0;
+	public ?ProductData $productData = null;
 
-    public float $startedAt;
+	public int $productId = 0;
 
-    public function __construct(GenerationRequest $request)
-    {
-        $this->request   = $request;
-        $this->startedAt = microtime(true);
-    }
+	public float $startedAt;
 
-    public function elapsed(): float
-    {
-        return round(microtime(true) - $this->startedAt, 2);
-    }
+	public function __construct( GenerationRequest $request ) {
+		$this->request   = $request;
+		$this->startedAt = microtime( true );
+	}
+
+	public function elapsed(): float {
+		return round( microtime( true ) - $this->startedAt, 2 );
+	}
 }

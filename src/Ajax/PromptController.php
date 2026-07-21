@@ -9,74 +9,72 @@ use AIProductStudio\Prompt\PromptRepository;
 /**
  * CRUD AJAX endpoints for prompts.
  */
-final class PromptController extends AbstractController
-{
-    private PromptRepository $repository;
+final class PromptController extends AbstractController {
 
-    public function __construct(PromptRepository $repository)
-    {
-        $this->repository = $repository;
-    }
+	private PromptRepository $repository;
 
-    public function save(): void
-    {
-        $this->guard();
+	public function __construct( PromptRepository $repository ) {
+		$this->repository = $repository;
+	}
 
-        // Prompt content may legitimately contain markup/braces, keep it raw but unslashed.
-        $content = isset($_POST['content']) ? wp_kses_post(wp_unslash((string) $_POST['content'])) : '';
+	public function save(): void {
+		$this->guard();
 
-        $data = [
-            'name'        => $this->post('name'),
-            'description' => $this->postTextarea('description'),
-            'content'     => $content,
-            'is_active'   => $this->postInt('is_active') === 1,
-        ];
+		// Prompt content may legitimately contain markup/braces, keep it raw but unslashed.
+		$content = isset( $_POST['content'] ) ? wp_kses_post( wp_unslash( (string) $_POST['content'] ) ) : '';
 
-        if ($data['name'] === '') {
-            $this->fail(__('Le nom du prompt est obligatoire.', 'ai-product-studio'));
-        }
+		$data = array(
+			'name'        => $this->post( 'name' ),
+			'description' => $this->postTextarea( 'description' ),
+			'content'     => $content,
+			'is_active'   => $this->postInt( 'is_active' ) === 1,
+		);
 
-        $id = $this->postInt('id');
+		if ( $data['name'] === '' ) {
+			$this->fail( __( 'Le nom du prompt est obligatoire.', 'ai-product-studio' ) );
+		}
 
-        if ($id > 0) {
-            $this->repository->update($id, $data);
-        } else {
-            $id = $this->repository->create($data);
-        }
+		$id = $this->postInt( 'id' );
 
-        $this->success([
-            'id'      => $id,
-            'message' => __('Prompt enregistré.', 'ai-product-studio'),
-        ]);
-    }
+		if ( $id > 0 ) {
+			$this->repository->update( $id, $data );
+		} else {
+			$id = $this->repository->create( $data );
+		}
 
-    public function delete(): void
-    {
-        $this->guard();
+		$this->success(
+			array(
+				'id'      => $id,
+				'message' => __( 'Prompt enregistré.', 'ai-product-studio' ),
+			)
+		);
+	}
 
-        $id = $this->postInt('id');
-        if ($id <= 0) {
-            $this->fail(__('Identifiant invalide.', 'ai-product-studio'));
-        }
+	public function delete(): void {
+		$this->guard();
 
-        $this->repository->delete($id);
+		$id = $this->postInt( 'id' );
+		if ( $id <= 0 ) {
+			$this->fail( __( 'Identifiant invalide.', 'ai-product-studio' ) );
+		}
 
-        $this->success(['message' => __('Prompt supprimé.', 'ai-product-studio')]);
-    }
+		$this->repository->delete( $id );
 
-    public function toggle(): void
-    {
-        $this->guard();
+		$this->success( array( 'message' => __( 'Prompt supprimé.', 'ai-product-studio' ) ) );
+	}
 
-        $id     = $this->postInt('id');
-        $prompt = $this->repository->find($id);
+	public function toggle(): void {
+		$this->guard();
 
-        if ($prompt === null) {
-            $this->fail(__('Prompt introuvable.', 'ai-product-studio'));
-        }
+		$id     = $this->postInt( 'id' );
+		$prompt = $this->repository->find( $id );
 
-        $this->repository->update($id, ['is_active' => ! $prompt->isActive]);
+		if ( $prompt === null ) {
+			$this->fail( __( 'Prompt introuvable.', 'ai-product-studio' ) );
+		}
 
-        $this->success(['is_active' => ! $prompt->isActive]);
-    }
+		$this->repository->update( $id, array( 'is_active' => ! $prompt->isActive ) );
+
+		$this->success( array( 'is_active' => ! $prompt->isActive ) );
+	}
 }

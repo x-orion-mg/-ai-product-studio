@@ -13,36 +13,34 @@ use AIProductStudio\Services\Settings;
  * Runs once when the plugin is activated: creates the custom tables, seeds the
  * default prompts and stores default settings.
  */
-final class Activator
-{
-    public static function activate(): void
-    {
-        self::createTables();
-        self::ensureStorage();
-        self::seedDefaults();
+final class Activator {
 
-        add_option('aips_version', AIPS_VERSION);
-        flush_rewrite_rules();
-    }
+	public static function activate(): void {
+		self::createTables();
+		self::ensureStorage();
+		self::seedDefaults();
 
-    /**
-     * Create the custom database tables via dbDelta.
-     */
-    public static function createTables(): void
-    {
-        global $wpdb;
+		add_option( 'aips_version', AIPS_VERSION );
+		flush_rewrite_rules();
+	}
 
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+	/**
+	 * Create the custom database tables via dbDelta.
+	 */
+	public static function createTables(): void {
+		global $wpdb;
 
-        $charset = $wpdb->get_charset_collate();
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        $prompts = PromptRepository::tableName();
-        $keys    = ApiKeyRepository::tableName();
-        $history = HistoryRepository::tableName();
+		$charset = $wpdb->get_charset_collate();
 
-        $queries = [];
+		$prompts = PromptRepository::tableName();
+		$keys    = ApiKeyRepository::tableName();
+		$history = HistoryRepository::tableName();
 
-        $queries[] = "CREATE TABLE {$prompts} (
+		$queries = array();
+
+		$queries[] = "CREATE TABLE {$prompts} (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(191) NOT NULL DEFAULT '',
             description TEXT NULL,
@@ -54,7 +52,7 @@ final class Activator
             KEY is_active (is_active)
         ) {$charset};";
 
-        $queries[] = "CREATE TABLE {$keys} (
+		$queries[] = "CREATE TABLE {$keys} (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             provider VARCHAR(60) NOT NULL DEFAULT '',
             label VARCHAR(191) NOT NULL DEFAULT '',
@@ -72,7 +70,7 @@ final class Activator
             KEY priority (priority)
         ) {$charset};";
 
-        $queries[] = "CREATE TABLE {$history} (
+		$queries[] = "CREATE TABLE {$history} (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             product_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
             provider VARCHAR(60) NOT NULL DEFAULT '',
@@ -88,56 +86,54 @@ final class Activator
             KEY created_at (created_at)
         ) {$charset};";
 
-        foreach ($queries as $query) {
-            dbDelta($query);
-        }
-    }
+		foreach ( $queries as $query ) {
+			dbDelta( $query );
+		}
+	}
 
-    /**
-     * Make sure the storage directories exist and are protected.
-     */
-    public static function ensureStorage(): void
-    {
-        $dirs = [
-            AIPS_STORAGE_DIR,
-            AIPS_STORAGE_DIR . 'logs/',
-            AIPS_STORAGE_DIR . 'cache/',
-        ];
+	/**
+	 * Make sure the storage directories exist and are protected.
+	 */
+	public static function ensureStorage(): void {
+		$dirs = array(
+			AIPS_STORAGE_DIR,
+			AIPS_STORAGE_DIR . 'logs/',
+			AIPS_STORAGE_DIR . 'cache/',
+		);
 
-        foreach ($dirs as $dir) {
-            if (! is_dir($dir)) {
-                wp_mkdir_p($dir);
-            }
+		foreach ( $dirs as $dir ) {
+			if ( ! is_dir( $dir ) ) {
+				wp_mkdir_p( $dir );
+			}
 
-            $htaccess = $dir . '.htaccess';
-            if (! file_exists($htaccess)) {
-                file_put_contents($htaccess, "Order deny,allow\nDeny from all\n");
-            }
+			$htaccess = $dir . '.htaccess';
+			if ( ! file_exists( $htaccess ) ) {
+				file_put_contents( $htaccess, "Order deny,allow\nDeny from all\n" );
+			}
 
-            $index = $dir . 'index.php';
-            if (! file_exists($index)) {
-                file_put_contents($index, "<?php\n// Silence is golden.\n");
-            }
-        }
-    }
+			$index = $dir . 'index.php';
+			if ( ! file_exists( $index ) ) {
+				file_put_contents( $index, "<?php\n// Silence is golden.\n" );
+			}
+		}
+	}
 
-    /**
-     * Seed default settings and the default prompt catalogue.
-     */
-    private static function seedDefaults(): void
-    {
-        if (get_option(Settings::OPTION_KEY) === false) {
-            add_option(Settings::OPTION_KEY, Settings::defaults());
-        }
+	/**
+	 * Seed default settings and the default prompt catalogue.
+	 */
+	private static function seedDefaults(): void {
+		if ( get_option( Settings::OPTION_KEY ) === false ) {
+			add_option( Settings::OPTION_KEY, Settings::defaults() );
+		}
 
-        $repository = new PromptRepository();
+		$repository = new PromptRepository();
 
-        if ($repository->count() === 0) {
-            $defaults = require AIPS_PLUGIN_DIR . 'config/default-prompts.php';
+		if ( $repository->count() === 0 ) {
+			$defaults = require AIPS_PLUGIN_DIR . 'config/default-prompts.php';
 
-            foreach ($defaults as $prompt) {
-                $repository->create($prompt);
-            }
-        }
-    }
+			foreach ( $defaults as $prompt ) {
+				$repository->create( $prompt );
+			}
+		}
+	}
 }

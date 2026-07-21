@@ -11,27 +11,23 @@ use AIProductStudio\Product\Workflow\StepInterface;
 /**
  * Collects lightweight metadata about the main image to enrich the prompt.
  */
-final class AnalyzeImageStep implements StepInterface
-{
-    private ImageAnalyzer $analyzer;
+final class AnalyzeImageStep implements StepInterface {
 
-    public function __construct(ImageAnalyzer $analyzer)
-    {
-        $this->analyzer = $analyzer;
-    }
+	private ImageAnalyzer $analyzer;
 
-    public function key(): string
-    {
-        return 'analyze_image';
-    }
+	public function __construct( ImageAnalyzer $analyzer ) {
+		$this->analyzer = $analyzer;
+	}
 
-    public function label(): string
-    {
-        return __('Analyse de l\'image', 'ai-product-studio');
-    }
+	public function key(): string {
+		return 'analyze_image';
+	}
 
-    public function handle(GenerationContext $context): void
-    {
-        $context->analysis = $this->analyzer->analyze($context->request->mainImageId);
-    }
+	public function label(): string {
+		return __( 'Analyse de l\'image', 'ai-product-studio' );
+	}
+
+	public function handle( GenerationContext $context ): void {
+		$context->analysis = $this->analyzer->analyze( $context->request->mainImageId );
+	}
 }

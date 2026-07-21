@@ -12,27 +12,23 @@ use AIProductStudio\Product\Workflow\StepInterface;
  * Compresses the main image (and optionally the first gallery images) into
  * base64 payloads ready to be sent to the AI.
  */
-final class PrepareImagesStep implements StepInterface
-{
-    private ImageCompressor $compressor;
+final class PrepareImagesStep implements StepInterface {
 
-    public function __construct(ImageCompressor $compressor)
-    {
-        $this->compressor = $compressor;
-    }
+	private ImageCompressor $compressor;
 
-    public function key(): string
-    {
-        return 'prepare_images';
-    }
+	public function __construct( ImageCompressor $compressor ) {
+		$this->compressor = $compressor;
+	}
 
-    public function label(): string
-    {
-        return __('Préparation des images', 'ai-product-studio');
-    }
+	public function key(): string {
+		return 'prepare_images';
+	}
 
-    public function handle(GenerationContext $context): void
-    {
-        $context->images[] = $this->compressor->toBase64($context->request->mainImageId);
-    }
+	public function label(): string {
+		return __( 'Préparation des images', 'ai-product-studio' );
+	}
+
+	public function handle( GenerationContext $context ): void {
+		$context->images[] = $this->compressor->toBase64( $context->request->mainImageId );
+	}
 }

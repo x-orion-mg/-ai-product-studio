@@ -9,79 +9,79 @@ use AIProductStudio\AI\ProviderFactory;
 use AIProductStudio\Prompt\PromptRepository;
 use AIProductStudio\Services\Settings;
 
-final class SettingsPage extends AbstractPage
-{
-    private const NONCE_ACTION = 'aips_save_settings';
-    private const NONCE_FIELD  = 'aips_settings_nonce';
+final class SettingsPage extends AbstractPage {
 
-    public function slug(): string
-    {
-        return 'settings';
-    }
+	private const NONCE_ACTION = 'aips_save_settings';
+	private const NONCE_FIELD  = 'aips_settings_nonce';
 
-    public function title(): string
-    {
-        return __('Configuration — AI Product Studio', 'ai-product-studio');
-    }
+	public function slug(): string {
+		return 'settings';
+	}
 
-    public function menuTitle(): string
-    {
-        return __('Configuration', 'ai-product-studio');
-    }
+	public function title(): string {
+		return __( 'Configuration — AI Product Studio', 'ai-product-studio' );
+	}
 
-    /**
-     * Handle the settings form POST (runs on admin_init).
-     */
-    public function maybeHandleSubmit(): void
-    {
-        if (! isset($_POST['aips_settings_submit'])) {
-            return;
-        }
+	public function menuTitle(): string {
+		return __( 'Configuration', 'ai-product-studio' );
+	}
 
-        if (! current_user_can('manage_woocommerce')) {
-            return;
-        }
+	/**
+	 * Handle the settings form POST (runs on admin_init).
+	 */
+	public function maybeHandleSubmit(): void {
+		if ( ! isset( $_POST['aips_settings_submit'] ) ) {
+			return;
+		}
 
-        check_admin_referer(self::NONCE_ACTION, self::NONCE_FIELD);
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
 
-        /** @var Settings $settings */
-        $settings = $this->container->get(Settings::class);
+		check_admin_referer( self::NONCE_ACTION, self::NONCE_FIELD );
 
-        $settings->update([
-            'default_provider'        => sanitize_key((string) ($_POST['default_provider'] ?? 'openai')),
-            'default_prompt_id'       => (int) ($_POST['default_prompt_id'] ?? 0),
-            'default_status'          => sanitize_key((string) ($_POST['default_status'] ?? 'draft')),
-            'image_max_width'         => max(256, (int) ($_POST['image_max_width'] ?? 1600)),
-            'image_quality'           => min(100, max(10, (int) ($_POST['image_quality'] ?? 82))),
-            'request_timeout'         => max(10, (int) ($_POST['request_timeout'] ?? 120)),
-            'max_error_before_disable'=> max(0, (int) ($_POST['max_error_before_disable'] ?? 5)),
-            'log_level'               => sanitize_key((string) ($_POST['log_level'] ?? 'info')),
-            'log_retention_days'      => max(1, (int) ($_POST['log_retention_days'] ?? 14)),
-            'log_max_files'           => max(1, (int) ($_POST['log_max_files'] ?? 14)),
-            'generate_seo'            => isset($_POST['generate_seo']),
-            'seo_plugin'              => sanitize_key((string) ($_POST['seo_plugin'] ?? 'auto')),
-            'language'                => sanitize_text_field((string) ($_POST['language'] ?? 'fr')),
-        ]);
+		/** @var Settings $settings */
+		$settings = $this->container->get( Settings::class );
 
-        add_settings_error('aips_settings', 'saved', __('Configuration enregistrée.', 'ai-product-studio'), 'updated');
-        set_transient('settings_errors', get_settings_errors(), 30);
-    }
+		$settings->update(
+			array(
+				'default_provider'         => sanitize_key( (string) ( $_POST['default_provider'] ?? 'openai' ) ),
+				'default_prompt_id'        => (int) ( $_POST['default_prompt_id'] ?? 0 ),
+				'default_status'           => sanitize_key( (string) ( $_POST['default_status'] ?? 'draft' ) ),
+				'image_max_width'          => max( 256, (int) ( $_POST['image_max_width'] ?? 1600 ) ),
+				'image_quality'            => min( 100, max( 10, (int) ( $_POST['image_quality'] ?? 82 ) ) ),
+				'request_timeout'          => max( 10, (int) ( $_POST['request_timeout'] ?? 120 ) ),
+				'max_error_before_disable' => max( 0, (int) ( $_POST['max_error_before_disable'] ?? 5 ) ),
+				'log_level'                => sanitize_key( (string) ( $_POST['log_level'] ?? 'info' ) ),
+				'log_retention_days'       => max( 1, (int) ( $_POST['log_retention_days'] ?? 14 ) ),
+				'log_max_files'            => max( 1, (int) ( $_POST['log_max_files'] ?? 14 ) ),
+				'generate_seo'             => isset( $_POST['generate_seo'] ),
+				'seo_plugin'               => sanitize_key( (string) ( $_POST['seo_plugin'] ?? 'auto' ) ),
+				'language'                 => sanitize_text_field( (string) ( $_POST['language'] ?? 'fr' ) ),
+			)
+		);
 
-    public function render(): void
-    {
-        /** @var Settings $settings */
-        $settings = $this->container->get(Settings::class);
-        /** @var ProviderFactory $factory */
-        $factory = $this->container->get(ProviderFactory::class);
-        /** @var PromptRepository $prompts */
-        $prompts = $this->container->get(PromptRepository::class);
+		add_settings_error( 'aips_settings', 'saved', __( 'Configuration enregistrée.', 'ai-product-studio' ), 'updated' );
+		set_transient( 'settings_errors', get_settings_errors(), 30 );
+	}
 
-        $this->view('settings', [
-            'settings'    => $settings->all(),
-            'providers'   => $factory->available(),
-            'prompts'     => $prompts->all(),
-            'nonceAction' => self::NONCE_ACTION,
-            'nonceField'  => self::NONCE_FIELD,
-        ]);
-    }
+	public function render(): void {
+		/** @var Settings $settings */
+		$settings = $this->container->get( Settings::class );
+		/** @var ProviderFactory $factory */
+		$factory = $this->container->get( ProviderFactory::class );
+		/** @var PromptRepository $prompts */
+		$prompts = $this->container->get( PromptRepository::class );
+
+		$this->view(
+			'settings',
+			array(
+				'settings'    => $settings->all(),
+				'providers'   => $factory->available(),
+				'prompts'     => $prompts->all(),
+				'nonceAction' => self::NONCE_ACTION,
+				'nonceField'  => self::NONCE_FIELD,
+			)
+		);
+	}
 }

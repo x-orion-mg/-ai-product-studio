@@ -11,54 +11,51 @@ use AIProductStudio\Models\AiResponse;
 /**
  * Google Gemini provider (generateContent endpoint with inline image data).
  */
-final class GeminiProvider extends AbstractProvider
-{
-    private const DEFAULT_BASE  = 'https://generativelanguage.googleapis.com/v1beta/models';
-    private const DEFAULT_MODEL = 'gemini-1.5-flash';
+final class GeminiProvider extends AbstractProvider {
 
-    public function slug(): string
-    {
-        return 'gemini';
-    }
+	private const DEFAULT_BASE  = 'https://generativelanguage.googleapis.com/v1beta/models';
+	private const DEFAULT_MODEL = 'gemini-1.5-flash';
 
-    public function label(): string
-    {
-        return 'Google Gemini';
-    }
+	public function slug(): string {
+		return 'gemini';
+	}
 
-    public function generate(ApiKey $key, string $prompt, array $images, array $options = []): AiResponse
-    {
-        $model = $key->model !== '' ? $key->model : self::DEFAULT_MODEL;
-        $base  = $key->endpoint !== '' ? rtrim($key->endpoint, '/') : self::DEFAULT_BASE;
+	public function label(): string {
+		return 'Google Gemini';
+	}
 
-        $endpoint = sprintf('%s/%s:generateContent?key=%s', $base, rawurlencode($model), rawurlencode($key->apiKey));
+	public function generate( ApiKey $key, string $prompt, array $images, array $options = array() ): AiResponse {
+		$model = $key->model !== '' ? $key->model : self::DEFAULT_MODEL;
+		$base  = $key->endpoint !== '' ? rtrim( $key->endpoint, '/' ) : self::DEFAULT_BASE;
 
-        $parts = [['text' => $prompt]];
-        foreach ($images as $image) {
-            $parts[] = [
-                'inline_data' => [
-                    'mime_type' => $image['mime'],
-                    'data'      => $image['data'],
-                ],
-            ];
-        }
+		$endpoint = sprintf( '%s/%s:generateContent?key=%s', $base, rawurlencode( $model ), rawurlencode( $key->apiKey ) );
 
-        $body = [
-            'contents'         => [['parts' => $parts]],
-            'generationConfig' => [
-                'temperature'      => (float) ($options['temperature'] ?? 0.4),
-                'responseMimeType' => 'application/json',
-            ],
-        ];
+		$parts = array( array( 'text' => $prompt ) );
+		foreach ( $images as $image ) {
+			$parts[] = array(
+				'inline_data' => array(
+					'mime_type' => $image['mime'],
+					'data'      => $image['data'],
+				),
+			);
+		}
 
-        $decoded = $this->post($endpoint, [], $body);
+		$body = array(
+			'contents'         => array( array( 'parts' => $parts ) ),
+			'generationConfig' => array(
+				'temperature'      => (float) ( $options['temperature'] ?? 0.4 ),
+				'responseMimeType' => 'application/json',
+			),
+		);
 
-        $text = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? null;
+		$decoded = $this->post( $endpoint, array(), $body );
 
-        if (! is_string($text) || $text === '') {
-            throw new ProviderException(__('Gemini n\'a renvoyé aucun contenu.', 'ai-product-studio'));
-        }
+		$text = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
-        return new AiResponse($text, $this->slug(), $model, $decoded);
-    }
+		if ( ! is_string( $text ) || $text === '' ) {
+			throw new ProviderException( __( 'Gemini n\'a renvoyé aucun contenu.', 'ai-product-studio' ) );
+		}
+
+		return new AiResponse( $text, $this->slug(), $model, $decoded );
+	}
 }

@@ -11,31 +11,29 @@ namespace AIProductStudio\Prompt;
  *   {{description_utilisateur}}, {{image}}, {{categorie}}, {{prix}},
  *   {{promotion}}, {{langue}}, {{produits_associes}}, {{format_json}}
  */
-final class PromptBuilder
-{
-    /**
-     * @param array<string, string> $variables
-     */
-    public function build(string $template, array $variables): string
-    {
-        $replacements = [];
+final class PromptBuilder {
 
-        foreach ($variables as $key => $value) {
-            $replacements['{{' . $key . '}}'] = $value;
-        }
+	/**
+	 * @param array<string, string> $variables
+	 */
+	public function build( string $template, array $variables ): string {
+		$replacements = array();
 
-        $compiled = strtr($template, $replacements);
+		foreach ( $variables as $key => $value ) {
+			$replacements[ '{{' . $key . '}}' ] = $value;
+		}
 
-        // Remove any variables that were left unresolved so they never leak to the AI.
-        return (string) preg_replace('/\{\{\s*[a-z0-9_]+\s*\}\}/i', '', $compiled);
-    }
+		$compiled = strtr( $template, $replacements );
 
-    /**
-     * The canonical JSON contract we ask every provider to respect.
-     */
-    public function jsonSchemaInstruction(): string
-    {
-        $schema = <<<'JSON'
+		// Remove any variables that were left unresolved so they never leak to the AI.
+		return (string) preg_replace( '/\{\{\s*[a-z0-9_]+\s*\}\}/i', '', $compiled );
+	}
+
+	/**
+	 * The canonical JSON contract we ask every provider to respect.
+	 */
+	public function jsonSchemaInstruction(): string {
+		$schema = <<<'JSON'
 {
   "title": "",
   "slug": "",
@@ -49,11 +47,11 @@ final class PromptBuilder
 }
 JSON;
 
-        return sprintf(
-            "%s\n\n%s\n%s",
-            __('Réponds UNIQUEMENT avec un objet JSON valide respectant exactement ce schéma, sans texte additionnel ni bloc de code Markdown :', 'ai-product-studio'),
-            $schema,
-            __('Toutes les valeurs textuelles doivent être rédigées dans la langue demandée.', 'ai-product-studio')
-        );
-    }
+		return sprintf(
+			"%s\n\n%s\n%s",
+			__( 'Réponds UNIQUEMENT avec un objet JSON valide respectant exactement ce schéma, sans texte additionnel ni bloc de code Markdown :', 'ai-product-studio' ),
+			$schema,
+			__( 'Toutes les valeurs textuelles doivent être rédigées dans la langue demandée.', 'ai-product-studio' )
+		);
+	}
 }

@@ -13,38 +13,34 @@ use AIProductStudio\Services\ResponseParser;
 /**
  * Parses and validates the AI's JSON response into a typed ProductData object.
  */
-final class ValidateResponseStep implements StepInterface
-{
-    private ResponseParser $parser;
+final class ValidateResponseStep implements StepInterface {
 
-    private JsonValidator $validator;
+	private ResponseParser $parser;
 
-    public function __construct(ResponseParser $parser, JsonValidator $validator)
-    {
-        $this->parser    = $parser;
-        $this->validator = $validator;
-    }
+	private JsonValidator $validator;
 
-    public function key(): string
-    {
-        return 'validate_json';
-    }
+	public function __construct( ResponseParser $parser, JsonValidator $validator ) {
+		$this->parser    = $parser;
+		$this->validator = $validator;
+	}
 
-    public function label(): string
-    {
-        return __('Validation du JSON', 'ai-product-studio');
-    }
+	public function key(): string {
+		return 'validate_json';
+	}
 
-    public function handle(GenerationContext $context): void
-    {
-        if ($context->aiResponse === null) {
-            throw new WorkflowException(
-                __('Aucune réponse IA à valider.', 'ai-product-studio'),
-                'validate_json'
-            );
-        }
+	public function label(): string {
+		return __( 'Validation du JSON', 'ai-product-studio' );
+	}
 
-        $decoded             = $this->parser->parse($context->aiResponse->content);
-        $context->productData = $this->validator->validate($decoded);
-    }
+	public function handle( GenerationContext $context ): void {
+		if ( $context->aiResponse === null ) {
+			throw new WorkflowException(
+				__( 'Aucune réponse IA à valider.', 'ai-product-studio' ),
+				'validate_json'
+			);
+		}
+
+		$decoded              = $this->parser->parse( $context->aiResponse->content );
+		$context->productData = $this->validator->validate( $decoded );
+	}
 }

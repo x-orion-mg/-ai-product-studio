@@ -14,64 +14,62 @@ use AIProductStudio\Services\Settings;
 /**
  * Resolves the prompt template and compiles it with the request variables.
  */
-final class BuildPromptStep implements StepInterface
-{
-    private PromptRepository $prompts;
+final class BuildPromptStep implements StepInterface {
 
-    private PromptBuilder $builder;
+	private PromptRepository $prompts;
 
-    private Settings $settings;
+	private PromptBuilder $builder;
 
-    public function __construct(PromptRepository $prompts, PromptBuilder $builder, Settings $settings)
-    {
-        $this->prompts  = $prompts;
-        $this->builder  = $builder;
-        $this->settings = $settings;
-    }
+	private Settings $settings;
 
-    public function key(): string
-    {
-        return 'build_prompt';
-    }
+	public function __construct( PromptRepository $prompts, PromptBuilder $builder, Settings $settings ) {
+		$this->prompts  = $prompts;
+		$this->builder  = $builder;
+		$this->settings = $settings;
+	}
 
-    public function label(): string
-    {
-        return __('Construction du prompt', 'ai-product-studio');
-    }
+	public function key(): string {
+		return 'build_prompt';
+	}
 
-    public function handle(GenerationContext $context): void
-    {
-        $prompt = $context->request->promptId > 0
-            ? $this->prompts->find($context->request->promptId)
-            : $this->prompts->firstActive();
+	public function label(): string {
+		return __( 'Construction du prompt', 'ai-product-studio' );
+	}
 
-        if ($prompt === null) {
-            throw new WorkflowException(
-                __('Aucun prompt disponible. Créez-en un dans l\'onglet Prompts.', 'ai-product-studio'),
-                'build_prompt'
-            );
-        }
+	public function handle( GenerationContext $context ): void {
+		$prompt = $context->request->promptId > 0
+			? $this->prompts->find( $context->request->promptId )
+			: $this->prompts->firstActive();
 
-        $context->prompt = $prompt;
+		if ( $prompt === null ) {
+			throw new WorkflowException(
+				__( 'Aucun prompt disponible. Créez-en un dans l\'onglet Prompts.', 'ai-product-studio' ),
+				'build_prompt'
+			);
+		}
 
-        $relatedTitles = array_filter(array_map(
-            static fn (int $id): string => (string) get_the_title($id),
-            $context->request->relatedProductIds
-        ));
+		$context->prompt = $prompt;
 
-        $variables = [
-            'description_utilisateur' => $context->request->userDescription,
-            'image'                   => (string) ($context->analysis['filename'] ?? ''),
-            'categorie'               => '',
-            'prix'                    => (string) $context->request->price,
-            'promotion'               => $context->request->salePrice !== null ? (string) $context->request->salePrice : '',
-            'produits_associes'       => implode(', ', $relatedTitles),
-            'langue'                  => (string) $this->settings->get('language', 'fr'),
-            'orientation'             => (string) ($context->analysis['orientation'] ?? ''),
-        ];
+		$relatedTitles = array_filter(
+			array_map(
+				static fn ( int $id ): string => (string) get_the_title( $id ),
+				$context->request->relatedProductIds
+			)
+		);
 
-        $compiled = $this->builder->build($prompt->content, $variables);
+		$variables = array(
+			'description_utilisateur' => $context->request->userDescription,
+			'image'                   => (string) ( $context->analysis['filename'] ?? '' ),
+			'categorie'               => '',
+			'prix'                    => (string) $context->request->price,
+			'promotion'               => $context->request->salePrice !== null ? (string) $context->request->salePrice : '',
+			'produits_associes'       => implode( ', ', $relatedTitles ),
+			'langue'                  => (string) $this->settings->get( 'language', 'fr' ),
+			'orientation'             => (string) ( $context->analysis['orientation'] ?? '' ),
+		);
 
-        $context->compiledPrompt = $compiled . "\n\n" . $this->builder->jsonSchemaInstruction();
-    }
+		$compiled = $this->builder->build( $prompt->content, $variables );
+
+		$context->compiledPrompt = $compiled . "\n\n" . $this->builder->jsonSchemaInstruction();
+	}
 }

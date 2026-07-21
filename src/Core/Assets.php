@@ -10,58 +10,59 @@ use AIProductStudio\Product\ProductGenerator;
  * Registers and enqueues admin CSS/JS, and exposes runtime data to the browser
  * (AJAX URL, nonce, pipeline steps).
  */
-final class Assets
-{
-    private ProductGenerator $generator;
+final class Assets {
 
-    public function __construct(ProductGenerator $generator)
-    {
-        $this->generator = $generator;
-    }
+	private ProductGenerator $generator;
 
-    public function register(): void
-    {
-        add_action('admin_enqueue_scripts', [$this, 'enqueue']);
-    }
+	public function __construct( ProductGenerator $generator ) {
+		$this->generator = $generator;
+	}
 
-    public function enqueue(string $hook): void
-    {
-        // Only load on our own admin pages.
-        if (! str_contains($hook, 'ai-product-studio')) {
-            return;
-        }
+	public function register(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
+	}
 
-        wp_enqueue_media();
+	public function enqueue( string $hook ): void {
+		// Only load on our own admin pages.
+		if ( ! str_contains( $hook, 'ai-product-studio' ) ) {
+			return;
+		}
 
-        wp_enqueue_style(
-            'aips-admin',
-            AIPS_PLUGIN_URL . 'assets/css/admin.css',
-            [],
-            AIPS_VERSION
-        );
+		wp_enqueue_media();
 
-        wp_enqueue_script(
-            'aips-admin',
-            AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            ['jquery', 'wp-i18n'],
-            AIPS_VERSION,
-            true
-        );
+		wp_enqueue_style(
+			'aips-admin',
+			AIPS_PLUGIN_URL . 'assets/css/admin.css',
+			array(),
+			AIPS_VERSION
+		);
 
-        wp_localize_script('aips-admin', 'AIPS', [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce'   => wp_create_nonce('aips_nonce'),
-            'steps'   => $this->generator->steps(),
-            'i18n'    => [
-                'generating'  => __('Génération en cours…', 'ai-product-studio'),
-                'cancelled'   => __('Génération annulée.', 'ai-product-studio'),
-                'done'        => __('Terminé', 'ai-product-studio'),
-                'error'       => __('Erreur', 'ai-product-studio'),
-                'confirmDelete' => __('Confirmer la suppression ?', 'ai-product-studio'),
-                'selectMain'  => __('Choisir l\'image principale', 'ai-product-studio'),
-                'selectGallery' => __('Ajouter à la galerie', 'ai-product-studio'),
-                'noImage'     => __('Veuillez ajouter une image principale.', 'ai-product-studio'),
-            ],
-        ]);
-    }
+		wp_enqueue_script(
+			'aips-admin',
+			AIPS_PLUGIN_URL . 'assets/js/admin.js',
+			array( 'jquery', 'wp-i18n' ),
+			AIPS_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'aips-admin',
+			'AIPS',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'aips_nonce' ),
+				'steps'   => $this->generator->steps(),
+				'i18n'    => array(
+					'generating'    => __( 'Génération en cours…', 'ai-product-studio' ),
+					'cancelled'     => __( 'Génération annulée.', 'ai-product-studio' ),
+					'done'          => __( 'Terminé', 'ai-product-studio' ),
+					'error'         => __( 'Erreur', 'ai-product-studio' ),
+					'confirmDelete' => __( 'Confirmer la suppression ?', 'ai-product-studio' ),
+					'selectMain'    => __( 'Choisir l\'image principale', 'ai-product-studio' ),
+					'selectGallery' => __( 'Ajouter à la galerie', 'ai-product-studio' ),
+					'noImage'       => __( 'Veuillez ajouter une image principale.', 'ai-product-studio' ),
+				),
+			)
+		);
+	}
 }

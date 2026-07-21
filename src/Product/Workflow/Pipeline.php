@@ -12,63 +12,61 @@ use AIProductStudio\Product\GenerationContext;
  * callback before and after each one. Adding, removing or reordering steps
  * requires no change to the steps themselves.
  */
-final class Pipeline
-{
-    /** @var array<int, StepInterface> */
-    private array $steps;
+final class Pipeline {
 
-    private Logger $logger;
+	/** @var array<int, StepInterface> */
+	private array $steps;
 
-    /** @var null|callable(string, string, string): void */
-    private $progress;
+	private Logger $logger;
 
-    /**
-     * @param array<int, StepInterface> $steps
-     */
-    public function __construct(array $steps, Logger $logger)
-    {
-        $this->steps  = $steps;
-        $this->logger = $logger;
-    }
+	/** @var null|callable(string, string, string): void */
+	private $progress;
 
-    /**
-     * @param callable(string $key, string $label, string $state): void $callback
-     */
-    public function onProgress(callable $callback): void
-    {
-        $this->progress = $callback;
-    }
+	/**
+	 * @param array<int, StepInterface> $steps
+	 */
+	public function __construct( array $steps, Logger $logger ) {
+		$this->steps  = $steps;
+		$this->logger = $logger;
+	}
 
-    /**
-     * @return array<int, array{key: string, label: string}>
-     */
-    public function describe(): array
-    {
-        return array_map(
-            static fn (StepInterface $step): array => ['key' => $step->key(), 'label' => $step->label()],
-            $this->steps
-        );
-    }
+	/**
+	 * @param callable(string $key, string $label, string $state): void $callback
+	 */
+	public function onProgress( callable $callback ): void {
+		$this->progress = $callback;
+	}
 
-    public function run(GenerationContext $context): GenerationContext
-    {
-        foreach ($this->steps as $step) {
-            $this->notify($step, 'running');
+	/**
+	 * @return array<int, array{key: string, label: string}>
+	 */
+	public function describe(): array {
+		return array_map(
+			static fn ( StepInterface $step ): array => array(
+				'key'   => $step->key(),
+				'label' => $step->label(),
+			),
+			$this->steps
+		);
+	}
 
-            $this->logger->debug('Étape démarrée.', ['step' => $step->key()]);
-            $step->handle($context);
-            $this->logger->debug('Étape terminée.', ['step' => $step->key()]);
+	public function run( GenerationContext $context ): GenerationContext {
+		foreach ( $this->steps as $step ) {
+			$this->notify( $step, 'running' );
 
-            $this->notify($step, 'done');
-        }
+			$this->logger->debug( 'Étape démarrée.', array( 'step' => $step->key() ) );
+			$step->handle( $context );
+			$this->logger->debug( 'Étape terminée.', array( 'step' => $step->key() ) );
 
-        return $context;
-    }
+			$this->notify( $step, 'done' );
+		}
 
-    private function notify(StepInterface $step, string $state): void
-    {
-        if ($this->progress !== null) {
-            ($this->progress)($step->key(), $step->label(), $state);
-        }
-    }
+		return $context;
+	}
+
+	private function notify( StepInterface $step, string $state ): void {
+		if ( $this->progress !== null ) {
+			( $this->progress )( $step->key(), $step->label(), $state );
+		}
+	}
 }

@@ -13,93 +13,98 @@ use AIProductStudio\Services\Settings;
  * logging and error normalisation. Concrete providers only build the request
  * body/headers and parse the response.
  */
-abstract class AbstractProvider implements ProviderInterface
-{
-    protected Logger $logger;
+abstract class AbstractProvider implements ProviderInterface {
 
-    protected Settings $settings;
+	protected Logger $logger;
 
-    public function __construct(Logger $logger, Settings $settings)
-    {
-        $this->logger   = $logger;
-        $this->settings = $settings;
-    }
+	protected Settings $settings;
 
-    public function requiresApiKey(): bool
-    {
-        return true;
-    }
+	public function __construct( Logger $logger, Settings $settings ) {
+		$this->logger   = $logger;
+		$this->settings = $settings;
+	}
 
-    /**
-     * Perform a JSON HTTP POST request and decode the response.
-     *
-     * @param array<string, string> $headers
-     * @param array<string, mixed>  $body
-     *
-     * @return array<string, mixed>
-     *
-     * @throws ProviderException
-     */
-    protected function post(string $url, array $headers, array $body): array
-    {
-        $timeout = (int) $this->settings->get('request_timeout', 120);
+	public function requiresApiKey(): bool {
+		return true;
+	}
 
-        $this->logger->debug('Requête IA envoyée.', [
-            'provider' => $this->slug(),
-            'url'      => $url,
-        ]);
+	/**
+	 * Perform a JSON HTTP POST request and decode the response.
+	 *
+	 * @param array<string, string> $headers
+	 * @param array<string, mixed>  $body
+	 *
+	 * @return array<string, mixed>
+	 *
+	 * @throws ProviderException
+	 */
+	protected function post( string $url, array $headers, array $body ): array {
+		$timeout = (int) $this->settings->get( 'request_timeout', 120 );
 
-        $response = wp_remote_post($url, [
-            'timeout' => $timeout,
-            'headers' => array_merge(['Content-Type' => 'application/json'], $headers),
-            'body'    => (string) wp_json_encode($body),
-        ]);
+		$this->logger->debug(
+			'Requête IA envoyée.',
+			array(
+				'provider' => $this->slug(),
+				'url'      => $url,
+			)
+		);
 
-        if (is_wp_error($response)) {
-            throw new ProviderException(
-                sprintf('%s: %s', $this->slug(), $response->get_error_message())
-            );
-        }
+		$response = wp_remote_post(
+			$url,
+			array(
+				'timeout' => $timeout,
+				'headers' => array_merge( array( 'Content-Type' => 'application/json' ), $headers ),
+				'body'    => (string) wp_json_encode( $body ),
+			)
+		);
 
-        $code = (int) wp_remote_retrieve_response_code($response);
-        $raw  = (string) wp_remote_retrieve_body($response);
+		if ( is_wp_error( $response ) ) {
+			throw new ProviderException(
+				sprintf( '%s: %s', $this->slug(), $response->get_error_message() )
+			);
+		}
 
-        if ($code < 200 || $code >= 300) {
-            $this->logger->error('Réponse IA en erreur.', [
-                'provider' => $this->slug(),
-                'code'     => $code,
-                'body'     => mb_substr($raw, 0, 2000),
-            ]);
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$raw  = (string) wp_remote_retrieve_body( $response );
 
-            throw new ProviderException(
-                sprintf(
-                    /* translators: 1: provider, 2: HTTP code, 3: message. */
-                    __('%1$s a renvoyé une erreur HTTP %2$d : %3$s', 'ai-product-studio'),
-                    $this->slug(),
-                    $code,
-                    mb_substr($raw, 0, 500)
-                )
-            );
-        }
+		if ( $code < 200 || $code >= 300 ) {
+			$this->logger->error(
+				'Réponse IA en erreur.',
+				array(
+					'provider' => $this->slug(),
+					'code'     => $code,
+					'body'     => mb_substr( $raw, 0, 2000 ),
+				)
+			);
 
-        $decoded = json_decode($raw, true);
+			throw new ProviderException(
+				sprintf(
+					/* translators: 1: provider, 2: HTTP code, 3: message. */
+					__( '%1$s a renvoyé une erreur HTTP %2$d : %3$s', 'ai-product-studio' ),
+					$this->slug(),
+					$code,
+					mb_substr( $raw, 0, 500 )
+				)
+			);
+		}
 
-        if (! is_array($decoded)) {
-            throw new ProviderException(
-                sprintf('%s: réponse JSON illisible.', $this->slug())
-            );
-        }
+		$decoded = json_decode( $raw, true );
 
-        return $decoded;
-    }
+		if ( ! is_array( $decoded ) ) {
+			throw new ProviderException(
+				sprintf( '%s: réponse JSON illisible.', $this->slug() )
+			);
+		}
 
-    /**
-     * Build a data URI from a base64 image descriptor.
-     *
-     * @param array{mime: string, data: string} $image
-     */
-    protected function dataUri(array $image): string
-    {
-        return sprintf('data:%s;base64,%s', $image['mime'], $image['data']);
-    }
+		return $decoded;
+	}
+
+	/**
+	 * Build a data URI from a base64 image descriptor.
+	 *
+	 * @param array{mime: string, data: string} $image
+	 */
+	protected function dataUri( array $image ): string {
+		return sprintf( 'data:%s;base64,%s', $image['mime'], $image['data'] );
+	}
 }

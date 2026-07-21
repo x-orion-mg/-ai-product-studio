@@ -15,118 +15,126 @@ use Throwable;
  * Orchestrates a full product generation: runs the pipeline, streams progress
  * into a transient (polled by the browser) and records the outcome in history.
  */
-final class ProductGenerator
-{
-    public const PROGRESS_PREFIX = 'aips_progress_';
+final class ProductGenerator {
 
-    private Pipeline $pipeline;
+	public const PROGRESS_PREFIX = 'aips_progress_';
 
-    private HistoryRepository $history;
+	private Pipeline $pipeline;
 
-    private Logger $logger;
+	private HistoryRepository $history;
 
-    public function __construct(Pipeline $pipeline, HistoryRepository $history, Logger $logger)
-    {
-        $this->pipeline = $pipeline;
-        $this->history  = $history;
-        $this->logger   = $logger;
-    }
+	private Logger $logger;
 
-    /**
-     * @return array<int, array{key: string, label: string}>
-     */
-    public function steps(): array
-    {
-        return $this->pipeline->describe();
-    }
+	public function __construct( Pipeline $pipeline, HistoryRepository $history, Logger $logger ) {
+		$this->pipeline = $pipeline;
+		$this->history  = $history;
+		$this->logger   = $logger;
+	}
 
-    /**
-     * @return array{product_id: int, duration: float, product_data: array<string, mixed>}
-     */
-    public function generate(GenerationRequest $request, string $jobId): array
-    {
-        $context = new GenerationContext($request);
+	/**
+	 * @return array<int, array{key: string, label: string}>
+	 */
+	public function steps(): array {
+		return $this->pipeline->describe();
+	}
 
-        $this->pipeline->onProgress(function (string $key, string $label, string $state) use ($jobId): void {
-            $this->updateProgress($jobId, $key, $label, $state);
-        });
+	/**
+	 * @return array{product_id: int, duration: float, product_data: array<string, mixed>}
+	 */
+	public function generate( GenerationRequest $request, string $jobId ): array {
+		$context = new GenerationContext( $request );
 
-        try {
-            $this->pipeline->run($context);
+		$this->pipeline->onProgress(
+			function ( string $key, string $label, string $state ) use ( $jobId ): void {
+				$this->updateProgress( $jobId, $key, $label, $state );
+			}
+		);
 
-            $duration = $context->elapsed();
+		try {
+			$this->pipeline->run( $context );
 
-            $this->history->record(
-                $context->productId,
-                $request->provider,
-                $context->prompt?->id ?? 0,
-                HistoryRepository::STATUS_SUCCESS,
-                $duration,
-                sprintf(__('Produit #%d généré.', 'ai-product-studio'), $context->productId),
-                ['product_data' => $context->productData?->toArray()]
-            );
+			$duration = $context->elapsed();
 
-            $this->setProgressState($jobId, 'completed');
+			$this->history->record(
+				$context->productId,
+				$request->provider,
+				$context->prompt?->id ?? 0,
+				HistoryRepository::STATUS_SUCCESS,
+				$duration,
+				/* translators: %d: created product ID. */
+				sprintf( __( 'Produit #%d généré.', 'ai-product-studio' ), $context->productId ),
+				array( 'product_data' => $context->productData?->toArray() )
+			);
 
-            return [
-                'product_id'   => $context->productId,
-                'duration'     => $duration,
-                'product_data' => $context->productData?->toArray() ?? [],
-            ];
-        } catch (Throwable $e) {
-            $duration = $context->elapsed();
+			$this->setProgressState( $jobId, 'completed' );
 
-            $this->logger->error('Échec de génération.', [
-                'error'    => $e->getMessage(),
-                'provider' => $request->provider,
-            ]);
+			return array(
+				'product_id'   => $context->productId,
+				'duration'     => $duration,
+				'product_data' => $context->productData?->toArray() ?? array(),
+			);
+		} catch ( Throwable $e ) {
+			$duration = $context->elapsed();
 
-            $this->history->record(
-                0,
-                $request->provider,
-                $context->prompt?->id ?? $request->promptId,
-                HistoryRepository::STATUS_ERROR,
-                $duration,
-                $e->getMessage()
-            );
+			$this->logger->error(
+				'Échec de génération.',
+				array(
+					'error'    => $e->getMessage(),
+					'provider' => $request->provider,
+				)
+			);
 
-            $this->setProgressState($jobId, 'error', $e->getMessage());
+			$this->history->record(
+				0,
+				$request->provider,
+				$context->prompt?->id ?? $request->promptId,
+				HistoryRepository::STATUS_ERROR,
+				$duration,
+				$e->getMessage()
+			);
 
-            if ($e instanceof AIProductStudioException) {
-                throw $e;
-            }
+			$this->setProgressState( $jobId, 'error', $e->getMessage() );
 
-            throw new AIProductStudioException($e->getMessage(), 0, $e);
-        }
-    }
+			if ( $e instanceof AIProductStudioException ) {
+				throw $e;
+			}
 
-    private function updateProgress(string $jobId, string $key, string $label, string $state): void
-    {
-        $progress = $this->readProgress($jobId);
-        $progress['steps'][$key] = ['label' => $label, 'state' => $state];
-        $progress['current']     = $key;
-        set_transient(self::PROGRESS_PREFIX . $jobId, $progress, 15 * MINUTE_IN_SECONDS);
-    }
+			throw new AIProductStudioException( $e->getMessage(), 0, $e );
+		}
+	}
 
-    private function setProgressState(string $jobId, string $status, string $message = ''): void
-    {
-        $progress            = $this->readProgress($jobId);
-        $progress['status']  = $status;
-        $progress['message'] = $message;
-        set_transient(self::PROGRESS_PREFIX . $jobId, $progress, 15 * MINUTE_IN_SECONDS);
-    }
+	private function updateProgress( string $jobId, string $key, string $label, string $state ): void {
+		$progress                  = $this->readProgress( $jobId );
+		$progress['steps'][ $key ] = array(
+			'label' => $label,
+			'state' => $state,
+		);
+		$progress['current']       = $key;
+		set_transient( self::PROGRESS_PREFIX . $jobId, $progress, 15 * MINUTE_IN_SECONDS );
+	}
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function readProgress(string $jobId): array
-    {
-        $progress = get_transient(self::PROGRESS_PREFIX . $jobId);
+	private function setProgressState( string $jobId, string $status, string $message = '' ): void {
+		$progress            = $this->readProgress( $jobId );
+		$progress['status']  = $status;
+		$progress['message'] = $message;
+		set_transient( self::PROGRESS_PREFIX . $jobId, $progress, 15 * MINUTE_IN_SECONDS );
+	}
 
-        if (! is_array($progress)) {
-            $progress = ['steps' => [], 'status' => 'running', 'current' => '', 'message' => ''];
-        }
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function readProgress( string $jobId ): array {
+		$progress = get_transient( self::PROGRESS_PREFIX . $jobId );
 
-        return $progress;
-    }
+		if ( ! is_array( $progress ) ) {
+			$progress = array(
+				'steps'   => array(),
+				'status'  => 'running',
+				'current' => '',
+				'message' => '',
+			);
+		}
+
+		return $progress;
+	}
 }

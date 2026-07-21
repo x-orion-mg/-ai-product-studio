@@ -12,58 +12,55 @@ use AIProductStudio\Services\Settings;
  * Math), auto-detecting which one is installed. Falls back to storing the data
  * as plugin meta so nothing is lost when no SEO plugin is present.
  */
-final class SeoGenerator
-{
-    private Settings $settings;
+final class SeoGenerator {
 
-    public function __construct(Settings $settings)
-    {
-        $this->settings = $settings;
-    }
+	private Settings $settings;
 
-    public function apply(int $productId, ProductData $data): void
-    {
-        if (! $this->settings->get('generate_seo', true)) {
-            return;
-        }
+	public function __construct( Settings $settings ) {
+		$this->settings = $settings;
+	}
 
-        $target = (string) $this->settings->get('seo_plugin', 'auto');
+	public function apply( int $productId, ProductData $data ): void {
+		if ( ! $this->settings->get( 'generate_seo', true ) ) {
+			return;
+		}
 
-        if ($target === 'auto') {
-            $target = $this->detect();
-        }
+		$target = (string) $this->settings->get( 'seo_plugin', 'auto' );
 
-        // Always keep a copy on our own meta keys.
-        update_post_meta($productId, '_aips_meta_title', $data->metaTitle);
-        update_post_meta($productId, '_aips_meta_description', $data->metaDescription);
+		if ( $target === 'auto' ) {
+			$target = $this->detect();
+		}
 
-        switch ($target) {
-            case 'yoast':
-                update_post_meta($productId, '_yoast_wpseo_title', $data->metaTitle);
-                update_post_meta($productId, '_yoast_wpseo_metadesc', $data->metaDescription);
-                break;
+		// Always keep a copy on our own meta keys.
+		update_post_meta( $productId, '_aips_meta_title', $data->metaTitle );
+		update_post_meta( $productId, '_aips_meta_description', $data->metaDescription );
 
-            case 'rankmath':
-                update_post_meta($productId, 'rank_math_title', $data->metaTitle);
-                update_post_meta($productId, 'rank_math_description', $data->metaDescription);
-                break;
+		switch ( $target ) {
+			case 'yoast':
+				update_post_meta( $productId, '_yoast_wpseo_title', $data->metaTitle );
+				update_post_meta( $productId, '_yoast_wpseo_metadesc', $data->metaDescription );
+				break;
 
-            default:
-                // No SEO plugin: our own meta already stored above.
-                break;
-        }
-    }
+			case 'rankmath':
+				update_post_meta( $productId, 'rank_math_title', $data->metaTitle );
+				update_post_meta( $productId, 'rank_math_description', $data->metaDescription );
+				break;
 
-    private function detect(): string
-    {
-        if (defined('WPSEO_VERSION') || class_exists('WPSEO_Meta')) {
-            return 'yoast';
-        }
+			default:
+				// No SEO plugin: our own meta already stored above.
+				break;
+		}
+	}
 
-        if (class_exists('RankMath') || defined('RANK_MATH_VERSION')) {
-            return 'rankmath';
-        }
+	private function detect(): string {
+		if ( defined( 'WPSEO_VERSION' ) || class_exists( 'WPSEO_Meta' ) ) {
+			return 'yoast';
+		}
 
-        return 'none';
-    }
+		if ( class_exists( 'RankMath' ) || defined( 'RANK_MATH_VERSION' ) ) {
+			return 'rankmath';
+		}
+
+		return 'none';
+	}
 }

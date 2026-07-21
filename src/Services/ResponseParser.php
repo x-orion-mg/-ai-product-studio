@@ -12,47 +12,45 @@ use AIProductStudio\Exceptions\ValidationException;
  * LLMs frequently wrap JSON in Markdown fences or add prose around it; this
  * parser is defensive and extracts the first valid JSON object it can find.
  */
-final class ResponseParser
-{
-    /**
-     * @return array<string, mixed>
-     */
-    public function parse(string $raw): array
-    {
-        $json = $this->extractJson($raw);
+final class ResponseParser {
 
-        $decoded = json_decode($json, true);
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function parse( string $raw ): array {
+		$json = $this->extractJson( $raw );
 
-        if (! is_array($decoded)) {
-            throw new ValidationException(
-                __('La réponse de l\'IA n\'est pas un JSON valide.', 'ai-product-studio'),
-                [json_last_error_msg()]
-            );
-        }
+		$decoded = json_decode( $json, true );
 
-        return $decoded;
-    }
+		if ( ! is_array( $decoded ) ) {
+			throw new ValidationException(
+				__( 'La réponse de l\'IA n\'est pas un JSON valide.', 'ai-product-studio' ),
+				array( json_last_error_msg() )
+			);
+		}
 
-    /**
-     * Extract the JSON payload from a possibly noisy response.
-     */
-    private function extractJson(string $raw): string
-    {
-        $raw = trim($raw);
+		return $decoded;
+	}
 
-        // Strip Markdown code fences (```json ... ``` or ``` ... ```).
-        if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/is', $raw, $matches) === 1) {
-            return trim($matches[1]);
-        }
+	/**
+	 * Extract the JSON payload from a possibly noisy response.
+	 */
+	private function extractJson( string $raw ): string {
+		$raw = trim( $raw );
 
-        // Fall back to the substring between the first "{" and the last "}".
-        $start = strpos($raw, '{');
-        $end   = strrpos($raw, '}');
+		// Strip Markdown code fences (```json ... ``` or ``` ... ```).
+		if ( preg_match( '/```(?:json)?\s*(\{.*\})\s*```/is', $raw, $matches ) === 1 ) {
+			return trim( $matches[1] );
+		}
 
-        if ($start !== false && $end !== false && $end > $start) {
-            return substr($raw, $start, $end - $start + 1);
-        }
+		// Fall back to the substring between the first "{" and the last "}".
+		$start = strpos( $raw, '{' );
+		$end   = strrpos( $raw, '}' );
 
-        return $raw;
-    }
+		if ( $start !== false && $end !== false && $end > $start ) {
+			return substr( $raw, $start, $end - $start + 1 );
+		}
+
+		return $raw;
+	}
 }

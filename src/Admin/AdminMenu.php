@@ -16,72 +16,68 @@ use AIProductStudio\Core\Container;
 /**
  * Builds the "AI Product Studio" admin menu and its sub-pages.
  */
-final class AdminMenu
-{
-    private const CAPABILITY = 'manage_woocommerce';
-    private const PARENT     = 'ai-product-studio';
+final class AdminMenu {
 
-    private Container $container;
+	private const CAPABILITY = 'manage_woocommerce';
+	private const PARENT     = 'ai-product-studio';
 
-    /** @var array<int, AbstractPage> */
-    private array $pages;
+	private Container $container;
 
-    public function __construct(Container $container)
-    {
-        $this->container = $container;
+	/** @var array<int, AbstractPage> */
+	private array $pages;
 
-        $this->pages = [
-            new DashboardPage($container),
-            new GeneratePage($container),
-            new SettingsPage($container),
-            new PromptsPage($container),
-            new ApiPage($container),
-            new HistoryPage($container),
-            new LogsPage($container),
-        ];
-    }
+	public function __construct( Container $container ) {
+		$this->container = $container;
 
-    public function register(): void
-    {
-        add_action('admin_menu', [$this, 'buildMenu']);
-        add_action('admin_init', [$this, 'handleFormPosts']);
-    }
+		$this->pages = array(
+			new DashboardPage( $container ),
+			new GeneratePage( $container ),
+			new SettingsPage( $container ),
+			new PromptsPage( $container ),
+			new ApiPage( $container ),
+			new HistoryPage( $container ),
+			new LogsPage( $container ),
+		);
+	}
 
-    public function buildMenu(): void
-    {
-        add_menu_page(
-            __('AI Product Studio', 'ai-product-studio'),
-            __('AI Product Studio', 'ai-product-studio'),
-            self::CAPABILITY,
-            self::PARENT,
-            [$this->pages[0], 'render'],
-            'dashicons-superhero',
-            56
-        );
+	public function register(): void {
+		add_action( 'admin_menu', array( $this, 'buildMenu' ) );
+		add_action( 'admin_init', array( $this, 'handleFormPosts' ) );
+	}
 
-        foreach ($this->pages as $index => $page) {
-            $slug = $index === 0 ? self::PARENT : self::PARENT . '-' . $page->slug();
+	public function buildMenu(): void {
+		add_menu_page(
+			__( 'AI Product Studio', 'ai-product-studio' ),
+			__( 'AI Product Studio', 'ai-product-studio' ),
+			self::CAPABILITY,
+			self::PARENT,
+			array( $this->pages[0], 'render' ),
+			'dashicons-superhero',
+			56
+		);
 
-            add_submenu_page(
-                self::PARENT,
-                $page->title(),
-                $page->menuTitle(),
-                self::CAPABILITY,
-                $slug,
-                [$page, 'render']
-            );
-        }
-    }
+		foreach ( $this->pages as $index => $page ) {
+			$slug = $index === 0 ? self::PARENT : self::PARENT . '-' . $page->slug();
 
-    /**
-     * Handle non-AJAX settings form submissions (Configuration page).
-     */
-    public function handleFormPosts(): void
-    {
-        foreach ($this->pages as $page) {
-            if ($page instanceof SettingsPage) {
-                $page->maybeHandleSubmit();
-            }
-        }
-    }
+			add_submenu_page(
+				self::PARENT,
+				$page->title(),
+				$page->menuTitle(),
+				self::CAPABILITY,
+				$slug,
+				array( $page, 'render' )
+			);
+		}
+	}
+
+	/**
+	 * Handle non-AJAX settings form submissions (Configuration page).
+	 */
+	public function handleFormPosts(): void {
+		foreach ( $this->pages as $page ) {
+			if ( $page instanceof SettingsPage ) {
+				$page->maybeHandleSubmit();
+			}
+		}
+	}
 }

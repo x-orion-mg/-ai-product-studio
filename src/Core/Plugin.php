@@ -39,169 +39,193 @@ use AIProductStudio\WooCommerce\ProductCreator;
  * Central bootstrap and service container of the plugin. Wires every service
  * as a lazy factory and registers the WordPress hooks.
  */
-final class Plugin
-{
-    private static ?Plugin $instance = null;
+final class Plugin {
 
-    private Container $container;
+	private static ?Plugin $instance = null;
 
-    private bool $booted = false;
+	private Container $container;
 
-    private function __construct()
-    {
-        $this->container = new Container();
-        $this->registerServices();
-    }
+	private bool $booted = false;
 
-    public static function instance(): Plugin
-    {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
+	private function __construct() {
+		$this->container = new Container();
+		$this->registerServices();
+	}
 
-        return self::$instance;
-    }
+	public static function instance(): Plugin {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
 
-    public function container(): Container
-    {
-        return $this->container;
-    }
+		return self::$instance;
+	}
 
-    /**
-     * Register hooks. Called once on plugins_loaded.
-     */
-    public function boot(): void
-    {
-        if ($this->booted) {
-            return;
-        }
+	public function container(): Container {
+		return $this->container;
+	}
 
-        $this->booted = true;
+	/**
+	 * Register hooks. Called once on plugins_loaded.
+	 */
+	public function boot(): void {
+		if ( $this->booted ) {
+			return;
+		}
 
-        load_plugin_textdomain('ai-product-studio', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
+		$this->booted = true;
 
-        // Admin UI.
-        if (is_admin()) {
-            /** @var AdminMenu $menu */
-            $menu = $this->container->get(AdminMenu::class);
-            $menu->register();
+		load_plugin_textdomain( 'ai-product-studio', false, dirname( AIPS_PLUGIN_BASENAME ) . '/languages' );
 
-            /** @var Assets $assets */
-            $assets = $this->container->get(Assets::class);
-            $assets->register();
-        }
+		// Admin UI.
+		if ( is_admin() ) {
+			/** @var AdminMenu $menu */
+			$menu = $this->container->get( AdminMenu::class );
+			$menu->register();
 
-        // AJAX endpoints (available in admin context).
-        /** @var AjaxRouter $router */
-        $router = $this->container->get(AjaxRouter::class);
-        $router->register();
+			/** @var Assets $assets */
+			$assets = $this->container->get( Assets::class );
+			$assets->register();
+		}
 
-        // Missing-dependency notices.
-        add_action('admin_notices', [$this, 'maybeWooCommerceNotice']);
-    }
+		// AJAX endpoints (available in admin context).
+		/** @var AjaxRouter $router */
+		$router = $this->container->get( AjaxRouter::class );
+		$router->register();
 
-    public function maybeWooCommerceNotice(): void
-    {
-        if (class_exists('WooCommerce')) {
-            return;
-        }
+		// Missing-dependency notices.
+		add_action( 'admin_notices', array( $this, 'maybeWooCommerceNotice' ) );
+	}
 
-        printf(
-            '<div class="notice notice-warning"><p>%s</p></div>',
-            esc_html__('AI Product Studio nécessite WooCommerce pour créer des produits. Veuillez installer et activer WooCommerce.', 'ai-product-studio')
-        );
-    }
+	public function maybeWooCommerceNotice(): void {
+		if ( class_exists( 'WooCommerce' ) ) {
+			return;
+		}
 
-    private function registerServices(): void
-    {
-        $c = $this->container;
+		printf(
+			'<div class="notice notice-warning"><p>%s</p></div>',
+			esc_html__( 'AI Product Studio nécessite WooCommerce pour créer des produits. Veuillez installer et activer WooCommerce.', 'ai-product-studio' )
+		);
+	}
 
-        $c->set(Settings::class, static fn (): Settings => new Settings());
+	private function registerServices(): void {
+		$c = $this->container;
 
-        $c->set(Logger::class, static fn (Container $c): Logger => new Logger($c->get(Settings::class)));
+		$c->set( Settings::class, static fn (): Settings => new Settings() );
 
-        $c->set(PromptRepository::class, static fn (): PromptRepository => new PromptRepository());
-        $c->set(PromptBuilder::class, static fn (): PromptBuilder => new PromptBuilder());
-        $c->set(ApiKeyRepository::class, static fn (): ApiKeyRepository => new ApiKeyRepository());
-        $c->set(HistoryRepository::class, static fn (): HistoryRepository => new HistoryRepository());
+		$c->set( Logger::class, static fn ( Container $c ): Logger => new Logger( $c->get( Settings::class ) ) );
 
-        $c->set(ApiKeyRotator::class, static fn (Container $c): ApiKeyRotator => new ApiKeyRotator(
-            $c->get(ApiKeyRepository::class),
-            $c->get(Settings::class)
-        ));
+		$c->set( PromptRepository::class, static fn (): PromptRepository => new PromptRepository() );
+		$c->set( PromptBuilder::class, static fn (): PromptBuilder => new PromptBuilder() );
+		$c->set( ApiKeyRepository::class, static fn (): ApiKeyRepository => new ApiKeyRepository() );
+		$c->set( HistoryRepository::class, static fn (): HistoryRepository => new HistoryRepository() );
 
-        $c->set(ProviderFactory::class, static fn (Container $c): ProviderFactory => new ProviderFactory(
-            $c->get(Logger::class),
-            $c->get(Settings::class)
-        ));
+		$c->set(
+			ApiKeyRotator::class,
+			static fn ( Container $c ): ApiKeyRotator => new ApiKeyRotator(
+				$c->get( ApiKeyRepository::class ),
+				$c->get( Settings::class )
+			)
+		);
 
-        $c->set(AiClient::class, static fn (Container $c): AiClient => new AiClient(
-            $c->get(ProviderFactory::class),
-            $c->get(ApiKeyRotator::class),
-            $c->get(Logger::class)
-        ));
+		$c->set(
+			ProviderFactory::class,
+			static fn ( Container $c ): ProviderFactory => new ProviderFactory(
+				$c->get( Logger::class ),
+				$c->get( Settings::class )
+			)
+		);
 
-        $c->set(ImageCompressor::class, static fn (Container $c): ImageCompressor => new ImageCompressor(
-            $c->get(Settings::class)
-        ));
-        $c->set(ImageAnalyzer::class, static fn (): ImageAnalyzer => new ImageAnalyzer());
+		$c->set(
+			AiClient::class,
+			static fn ( Container $c ): AiClient => new AiClient(
+				$c->get( ProviderFactory::class ),
+				$c->get( ApiKeyRotator::class ),
+				$c->get( Logger::class )
+			)
+		);
 
-        $c->set(ResponseParser::class, static fn (): ResponseParser => new ResponseParser());
-        $c->set(JsonValidator::class, static fn (): JsonValidator => new JsonValidator());
+		$c->set(
+			ImageCompressor::class,
+			static fn ( Container $c ): ImageCompressor => new ImageCompressor(
+				$c->get( Settings::class )
+			)
+		);
+		$c->set( ImageAnalyzer::class, static fn (): ImageAnalyzer => new ImageAnalyzer() );
 
-        $c->set(ProductCreator::class, static fn (): ProductCreator => new ProductCreator());
-        $c->set(SeoGenerator::class, static fn (Container $c): SeoGenerator => new SeoGenerator(
-            $c->get(Settings::class)
-        ));
+		$c->set( ResponseParser::class, static fn (): ResponseParser => new ResponseParser() );
+		$c->set( JsonValidator::class, static fn (): JsonValidator => new JsonValidator() );
 
-        $c->set(Pipeline::class, static function (Container $c): Pipeline {
-            $steps = [
-                new PrepareImagesStep($c->get(ImageCompressor::class)),
-                new AnalyzeImageStep($c->get(ImageAnalyzer::class)),
-                new BuildPromptStep(
-                    $c->get(PromptRepository::class),
-                    $c->get(PromptBuilder::class),
-                    $c->get(Settings::class)
-                ),
-                new CallAiStep($c->get(AiClient::class)),
-                new ValidateResponseStep(
-                    $c->get(ResponseParser::class),
-                    $c->get(JsonValidator::class)
-                ),
-                new CreateProductStep(
-                    $c->get(ProductCreator::class),
-                    $c->get(Settings::class)
-                ),
-                new SeoStep($c->get(SeoGenerator::class)),
-                new FinalizeStep(),
-            ];
+		$c->set( ProductCreator::class, static fn (): ProductCreator => new ProductCreator() );
+		$c->set(
+			SeoGenerator::class,
+			static fn ( Container $c ): SeoGenerator => new SeoGenerator(
+				$c->get( Settings::class )
+			)
+		);
 
-            return new Pipeline($steps, $c->get(Logger::class));
-        });
+		$c->set(
+			Pipeline::class,
+			static function ( Container $c ): Pipeline {
+				$steps = array(
+					new PrepareImagesStep( $c->get( ImageCompressor::class ) ),
+					new AnalyzeImageStep( $c->get( ImageAnalyzer::class ) ),
+					new BuildPromptStep(
+						$c->get( PromptRepository::class ),
+						$c->get( PromptBuilder::class ),
+						$c->get( Settings::class )
+					),
+					new CallAiStep( $c->get( AiClient::class ) ),
+					new ValidateResponseStep(
+						$c->get( ResponseParser::class ),
+						$c->get( JsonValidator::class )
+					),
+					new CreateProductStep(
+						$c->get( ProductCreator::class ),
+						$c->get( Settings::class )
+					),
+					new SeoStep( $c->get( SeoGenerator::class ) ),
+					new FinalizeStep(),
+				);
 
-        $c->set(ProductGenerator::class, static fn (Container $c): ProductGenerator => new ProductGenerator(
-            $c->get(Pipeline::class),
-            $c->get(HistoryRepository::class),
-            $c->get(Logger::class)
-        ));
+				return new Pipeline( $steps, $c->get( Logger::class ) );
+			}
+		);
 
-        // Admin.
-        $c->set(AdminMenu::class, static fn (Container $c): AdminMenu => new AdminMenu($c));
-        $c->set(Assets::class, static fn (Container $c): Assets => new Assets($c->get(ProductGenerator::class)));
+		$c->set(
+			ProductGenerator::class,
+			static fn ( Container $c ): ProductGenerator => new ProductGenerator(
+				$c->get( Pipeline::class ),
+				$c->get( HistoryRepository::class ),
+				$c->get( Logger::class )
+			)
+		);
 
-        // Ajax controllers + router.
-        $c->set(GenerateController::class, static fn (Container $c): GenerateController => new GenerateController(
-            $c->get(ProductGenerator::class),
-            $c->get(Logger::class)
-        ));
-        $c->set(PromptController::class, static fn (Container $c): PromptController => new PromptController(
-            $c->get(PromptRepository::class)
-        ));
-        $c->set(ApiKeyController::class, static fn (Container $c): ApiKeyController => new ApiKeyController(
-            $c->get(ApiKeyRepository::class),
-            $c->get(ProviderFactory::class)
-        ));
+		// Admin.
+		$c->set( AdminMenu::class, static fn ( Container $c ): AdminMenu => new AdminMenu( $c ) );
+		$c->set( Assets::class, static fn ( Container $c ): Assets => new Assets( $c->get( ProductGenerator::class ) ) );
 
-        $c->set(AjaxRouter::class, static fn (Container $c): AjaxRouter => new AjaxRouter($c));
-    }
+		// Ajax controllers + router.
+		$c->set(
+			GenerateController::class,
+			static fn ( Container $c ): GenerateController => new GenerateController(
+				$c->get( ProductGenerator::class ),
+				$c->get( Logger::class )
+			)
+		);
+		$c->set(
+			PromptController::class,
+			static fn ( Container $c ): PromptController => new PromptController(
+				$c->get( PromptRepository::class )
+			)
+		);
+		$c->set(
+			ApiKeyController::class,
+			static fn ( Container $c ): ApiKeyController => new ApiKeyController(
+				$c->get( ApiKeyRepository::class ),
+				$c->get( ProviderFactory::class )
+			)
+		);
+
+		$c->set( AjaxRouter::class, static fn ( Container $c ): AjaxRouter => new AjaxRouter( $c ) );
+	}
 }

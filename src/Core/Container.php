@@ -13,55 +13,51 @@ use AIProductStudio\Exceptions\ContainerException;
  * This keeps the plugin decoupled: consumers depend on the container, not on the
  * concrete construction of each service.
  */
-final class Container
-{
-    /** @var array<string, callable> */
-    private array $factories = [];
+final class Container {
 
-    /** @var array<string, mixed> */
-    private array $instances = [];
+	/** @var array<string, callable> */
+	private array $factories = array();
 
-    /**
-     * Register a lazy service factory.
-     *
-     * @param callable(Container):mixed $factory
-     */
-    public function set(string $id, callable $factory): void
-    {
-        $this->factories[$id] = $factory;
-        unset($this->instances[$id]);
-    }
+	/** @var array<string, mixed> */
+	private array $instances = array();
 
-    /**
-     * Store an already-created instance.
-     */
-    public function instance(string $id, mixed $instance): void
-    {
-        $this->instances[$id] = $instance;
-    }
+	/**
+	 * Register a lazy service factory.
+	 *
+	 * @param callable(Container):mixed $factory
+	 */
+	public function set( string $id, callable $factory ): void {
+		$this->factories[ $id ] = $factory;
+		unset( $this->instances[ $id ] );
+	}
 
-    /**
-     * Resolve a service, building it once and caching the result.
-     */
-    public function get(string $id): mixed
-    {
-        if (array_key_exists($id, $this->instances)) {
-            return $this->instances[$id];
-        }
+	/**
+	 * Store an already-created instance.
+	 */
+	public function instance( string $id, mixed $instance ): void {
+		$this->instances[ $id ] = $instance;
+	}
 
-        if (! isset($this->factories[$id])) {
-            throw new ContainerException(
-                sprintf('Aucun service enregistré pour l\'identifiant « %s ».', $id)
-            );
-        }
+	/**
+	 * Resolve a service, building it once and caching the result.
+	 */
+	public function get( string $id ): mixed {
+		if ( array_key_exists( $id, $this->instances ) ) {
+			return $this->instances[ $id ];
+		}
 
-        $this->instances[$id] = ($this->factories[$id])($this);
+		if ( ! isset( $this->factories[ $id ] ) ) {
+			throw new ContainerException(
+				sprintf( 'Aucun service enregistré pour l\'identifiant « %s ».', $id )
+			);
+		}
 
-        return $this->instances[$id];
-    }
+		$this->instances[ $id ] = ( $this->factories[ $id ] )( $this );
 
-    public function has(string $id): bool
-    {
-        return isset($this->factories[$id]) || array_key_exists($id, $this->instances);
-    }
+		return $this->instances[ $id ];
+	}
+
+	public function has( string $id ): bool {
+		return isset( $this->factories[ $id ] ) || array_key_exists( $id, $this->instances );
+	}
 }
