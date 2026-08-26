@@ -1,0 +1,13 @@
+/vendor/
+composer.lock
+
+# Runtime storage (keep the directories, ignore their content)
+/storage/logs/*
+/storage/cache/*
+!/storage/logs/.gitkeep
+!/storage/cache/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
