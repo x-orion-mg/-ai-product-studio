@@ -6,14 +6,15 @@ namespace AIProductStudio\Ajax;
 
 use AIProductStudio\Exceptions\AIProductStudioException;
 use AIProductStudio\Exceptions\ValidationException;
+use AIProductStudio\Import\SpreadsheetParser;
 use AIProductStudio\Logger\Logger;
 use AIProductStudio\Models\GenerationRequest;
 use AIProductStudio\Product\ProductGenerator;
 use Throwable;
 
 /**
- * Handles the product-generation AJAX flow: kick-off, progress polling and
- * cancellation.
+ * Handles the product-generation AJAX flow: kick-off, progress polling,
+ * cancellation and spreadsheet parsing.
  */
 final class GenerateController extends AbstractController
 {
@@ -21,19 +22,46 @@ final class GenerateController extends AbstractController
 
     private Logger $logger;
 
-    public function __construct(ProductGenerator $generator, Logger $logger)
+    private SpreadsheetParser $spreadsheet;
+
+    public function __construct(ProductGenerator $generator, Logger $logger, SpreadsheetParser $spreadsheet)
     {
-        $this->generator = $generator;
-        $this->logger    = $logger;
+        $this->generator   = $generator;
+        $this->logger      = $logger;
+        $this->spreadsheet = $spreadsheet;
     }
 
     public function generate(): void
     {
         $this->guard();
 
-        $mainImageId = $this->postInt('main_image_id');
-        if ($mainImageId <= 0) {
+        $source = $this->post('source', GenerationRequest::SOURCE_IMAGE);
+        $allowed = [
+            GenerationRequest::SOURCE_IMAGE,
+            GenerationRequest::SOURCE_DESCRIPTION,
+            GenerationRequest::SOURCE_IMPORT,
+        ];
+
+        if (! in_array($source, $allowed, true)) {
+            $this->fail(__('Type de saisie invalide.', 'ai-product-studio'));
+        }
+
+        $mainImageId     = $this->postInt('main_image_id');
+        $userDescription = $this->postTextarea('user_description');
+
+        if ($source === GenerationRequest::SOURCE_IMAGE && $mainImageId <= 0) {
             $this->fail(__('Veuillez sélectionner une image principale.', 'ai-product-studio'));
+        }
+
+        if (
+            in_array($source, [GenerationRequest::SOURCE_DESCRIPTION, GenerationRequest::SOURCE_IMPORT], true)
+            && $userDescription === ''
+        ) {
+            $this->fail(__('Veuillez saisir une description produit.', 'ai-product-studio'));
+        }
+
+        if ($source !== GenerationRequest::SOURCE_IMAGE) {
+            $mainImageId = 0;
         }
 
         $jobId = $this->post('job_id');
@@ -41,17 +69,17 @@ final class GenerateController extends AbstractController
             $jobId = wp_generate_uuid4();
         }
 
-        // Abort early if the user cancelled before we started heavy work.
         if ($this->isCancelled($jobId)) {
             $this->fail(__('Génération annulée.', 'ai-product-studio'));
         }
 
         $request = new GenerationRequest(
+            source: $source,
             mainImageId: $mainImageId,
             galleryImageIds: $this->postIntList('gallery_image_ids'),
             price: $this->postFloat('price'),
             salePrice: $this->postFloat('sale_price') > 0 ? $this->postFloat('sale_price') : null,
-            userDescription: $this->postTextarea('user_description'),
+            userDescription: $userDescription,
             relatedProductIds: $this->postIntList('related_product_ids'),
             promptId: $this->postInt('prompt_id'),
             provider: $this->post('provider', 'openai')
@@ -78,6 +106,44 @@ final class GenerateController extends AbstractController
             $this->logger->error('Erreur inattendue lors de la génération.', ['error' => $e->getMessage()]);
             $this->fail(__('Une erreur inattendue est survenue.', 'ai-product-studio'), 500);
         }
+    }
+
+    public function parseImport(): void
+    {
+        $this->guard();
+
+        if (empty($_FILES['import_file']) || ! is_array($_FILES['import_file'])) {
+            $this->fail(__('Veuillez choisir un fichier CSV ou Excel.', 'ai-product-studio'));
+        }
+
+        $file = $_FILES['import_file'];
+
+        if (! empty($file['error']) && (int) $file['error'] !== UPLOAD_ERR_OK) {
+            $this->fail(__('Échec de l\'upload du fichier.', 'ai-product-studio'));
+        }
+
+        $tmp  = (string) ($file['tmp_name'] ?? '');
+        $name = sanitize_file_name((string) ($file['name'] ?? 'import.csv'));
+
+        if ($tmp === '' || ! is_uploaded_file($tmp)) {
+            $this->fail(__('Fichier d\'import introuvable.', 'ai-product-studio'));
+        }
+
+        $size = (int) ($file['size'] ?? 0);
+        if ($size > 5 * MB_IN_BYTES) {
+            $this->fail(__('Le fichier dépasse 5 Mo.', 'ai-product-studio'));
+        }
+
+        try {
+            $rows = $this->spreadsheet->parse($tmp, $name);
+        } catch (ValidationException $e) {
+            $this->fail($e->getMessage(), 422, ['errors' => $e->getErrors()]);
+        }
+
+        $this->success([
+            'count' => count($rows),
+            'rows'  => $rows,
+        ]);
     }
 
     public function progress(): void

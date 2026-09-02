@@ -14,7 +14,7 @@ use AIProductStudio\Admin\Pages\SettingsPage;
 use AIProductStudio\Core\Container;
 
 /**
- * Builds the "AI Product Studio" admin menu and its sub-pages.
+ * Builds the "My AI Agent" admin menu and its sub-pages.
  */
 final class AdminMenu
 {
@@ -50,8 +50,8 @@ final class AdminMenu
     public function buildMenu(): void
     {
         add_menu_page(
-            __('AI Product Studio', 'ai-product-studio'),
-            __('AI Product Studio', 'ai-product-studio'),
+            __('My AI Agent', 'ai-product-studio'),
+            __('My AI Agent', 'ai-product-studio'),
             self::CAPABILITY,
             self::PARENT,
             [$this->pages[0], 'render'],

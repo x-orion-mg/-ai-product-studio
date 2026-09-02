@@ -27,6 +27,7 @@ final class AjaxRouter
 
         $this->routes = [
             'aips_generate_product'    => [GenerateController::class, 'generate'],
+            'aips_parse_import'        => [GenerateController::class, 'parseImport'],
             'aips_generation_progress' => [GenerateController::class, 'progress'],
             'aips_cancel_generation'   => [GenerateController::class, 'cancel'],
             'aips_save_prompt'         => [PromptController::class, 'save'],

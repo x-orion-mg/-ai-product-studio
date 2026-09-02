@@ -101,7 +101,7 @@ final class Activator
         $dirs = [
             AIPS_STORAGE_DIR,
             AIPS_STORAGE_DIR . 'logs/',
-            AIPS_STORAGE_DIR . 'cache/',
+            AIPS_STORAGE_DIR . 'sessions/',
         ];
 
         foreach ($dirs as $dir) {

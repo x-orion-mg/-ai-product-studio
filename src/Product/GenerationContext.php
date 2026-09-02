@@ -17,6 +17,8 @@ final class GenerationContext
 {
     public GenerationRequest $request;
 
+    public string $jobId = '';
+
     public ?Prompt $prompt = null;
 
     /** @var array<int, array{mime: string, data: string}> */
@@ -35,9 +37,10 @@ final class GenerationContext
 
     public float $startedAt;
 
-    public function __construct(GenerationRequest $request)
+    public function __construct(GenerationRequest $request, string $jobId = '')
     {
         $this->request   = $request;
+        $this->jobId     = $jobId;
         $this->startedAt = microtime(true);
     }
 

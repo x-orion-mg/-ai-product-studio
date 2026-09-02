@@ -9,7 +9,7 @@ use AIProductStudio\Product\GenerationContext;
 use AIProductStudio\Product\Workflow\StepInterface;
 
 /**
- * Sends the compiled prompt and prepared images to the selected AI provider.
+ * Runs the product agent (My AI Lib) with the compiled prompt and optional images.
  */
 final class CallAiStep implements StepInterface
 {
@@ -27,7 +27,7 @@ final class CallAiStep implements StepInterface
 
     public function label(): string
     {
-        return __('Appel à l\'IA', 'ai-product-studio');
+        return __('Agent IA', 'ai-product-studio');
     }
 
     public function handle(GenerationContext $context): void
@@ -35,7 +35,8 @@ final class CallAiStep implements StepInterface
         $context->aiResponse = $this->client->generate(
             $context->request->provider,
             $context->compiledPrompt,
-            $context->images
+            $context->images,
+            ['session_id' => $context->jobId !== '' ? $context->jobId : uniqid('aips-', true)]
         );
     }
 }

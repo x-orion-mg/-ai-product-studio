@@ -4,8 +4,10 @@ composer.lock
 # Runtime storage (keep the directories, ignore their content)
 /storage/logs/*
 /storage/cache/*
+/storage/sessions/*
 !/storage/logs/.gitkeep
 !/storage/cache/.gitkeep
+!/storage/sessions/.gitkeep
 
 # OS / editor
 .DS_Store

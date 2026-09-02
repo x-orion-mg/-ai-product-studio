@@ -18,7 +18,7 @@ final class DashboardPage extends AbstractPage
 
     public function title(): string
     {
-        return __('Tableau de bord — AI Product Studio', 'ai-product-studio');
+        return __('Tableau de bord — My AI Agent', 'ai-product-studio');
     }
 
     public function menuTitle(): string

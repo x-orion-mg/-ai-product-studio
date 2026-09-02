@@ -33,6 +33,12 @@ final class PrepareImagesStep implements StepInterface
 
     public function handle(GenerationContext $context): void
     {
+        if (! $context->request->hasImage()) {
+            $context->images = [];
+
+            return;
+        }
+
         $context->images[] = $this->compressor->toBase64($context->request->mainImageId);
     }
 }

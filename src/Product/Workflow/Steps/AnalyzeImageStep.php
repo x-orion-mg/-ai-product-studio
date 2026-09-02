@@ -32,6 +32,12 @@ final class AnalyzeImageStep implements StepInterface
 
     public function handle(GenerationContext $context): void
     {
+        if (! $context->request->hasImage()) {
+            $context->analysis = [];
+
+            return;
+        }
+
         $context->analysis = $this->analyzer->analyze($context->request->mainImageId);
     }
 }

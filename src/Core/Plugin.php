@@ -16,6 +16,7 @@ use AIProductStudio\API\ApiKeyRotator;
 use AIProductStudio\History\HistoryRepository;
 use AIProductStudio\Image\ImageAnalyzer;
 use AIProductStudio\Image\ImageCompressor;
+use AIProductStudio\Import\SpreadsheetParser;
 use AIProductStudio\Logger\Logger;
 use AIProductStudio\Product\ProductGenerator;
 use AIProductStudio\Product\Workflow\Pipeline;
@@ -108,7 +109,7 @@ final class Plugin
 
         printf(
             '<div class="notice notice-warning"><p>%s</p></div>',
-            esc_html__('AI Product Studio nécessite WooCommerce pour créer des produits. Veuillez installer et activer WooCommerce.', 'ai-product-studio')
+            esc_html__('My AI Agent nécessite WooCommerce pour créer des produits. Veuillez installer et activer WooCommerce.', 'ai-product-studio')
         );
     }
 
@@ -148,6 +149,7 @@ final class Plugin
 
         $c->set(ResponseParser::class, static fn (): ResponseParser => new ResponseParser());
         $c->set(JsonValidator::class, static fn (): JsonValidator => new JsonValidator());
+        $c->set(SpreadsheetParser::class, static fn (): SpreadsheetParser => new SpreadsheetParser());
 
         $c->set(ProductCreator::class, static fn (): ProductCreator => new ProductCreator());
         $c->set(SeoGenerator::class, static fn (Container $c): SeoGenerator => new SeoGenerator(
@@ -192,7 +194,8 @@ final class Plugin
         // Ajax controllers + router.
         $c->set(GenerateController::class, static fn (Container $c): GenerateController => new GenerateController(
             $c->get(ProductGenerator::class),
-            $c->get(Logger::class)
+            $c->get(Logger::class),
+            $c->get(SpreadsheetParser::class)
         ));
         $c->set(PromptController::class, static fn (Container $c): PromptController => new PromptController(
             $c->get(PromptRepository::class)

@@ -19,7 +19,7 @@ final class GeneratePage extends AbstractPage
 
     public function title(): string
     {
-        return __('Générer un produit — AI Product Studio', 'ai-product-studio');
+        return __('Générer un produit — My AI Agent', 'ai-product-studio');
     }
 
     public function menuTitle(): string

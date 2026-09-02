@@ -1,16 +1,23 @@
 {
     "name": "mahery-rak/ai-product-studio",
-    "description": "Plugin WordPress professionnel : création automatisée de produits WooCommerce à partir d'une image grâce à l'IA.",
+    "description": "Plugin WordPress My AI Agent : création de produits WooCommerce via des agents IA (image, description, import CSV/Excel).",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
-    "keywords": ["wordpress", "woocommerce", "ai", "product", "generator"],
+    "keywords": ["wordpress", "woocommerce", "ai", "agent", "product", "generator"],
     "authors": [
         {
             "name": "Mahery RAKOTOARISON"
         }
     ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/x-orion-mg/my-ia-lib-2.git"
+        }
+    ],
     "require": {
-        "php": ">=8.0"
+        "php": ">=8.2",
+        "x-orion-mg/my-ai-lib": "dev-master"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "^3.9",

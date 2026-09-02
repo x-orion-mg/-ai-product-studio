@@ -61,6 +61,11 @@ final class Assets
                 'selectMain'  => __('Choisir l\'image principale', 'ai-product-studio'),
                 'selectGallery' => __('Ajouter à la galerie', 'ai-product-studio'),
                 'noImage'     => __('Veuillez ajouter une image principale.', 'ai-product-studio'),
+                'noDescription' => __('Veuillez saisir une description produit.', 'ai-product-studio'),
+                'noFile'      => __('Veuillez choisir un fichier CSV ou Excel.', 'ai-product-studio'),
+                'parsing'     => __('Analyse du fichier…', 'ai-product-studio'),
+                'rowsFound'   => __('Lignes détectées', 'ai-product-studio'),
+                'importDone'  => __('produits créés.', 'ai-product-studio'),
             ],
         ]);
     }

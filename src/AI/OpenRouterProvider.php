@@ -49,7 +49,7 @@ final class OpenRouterProvider extends AbstractProvider
         $decoded = $this->post($endpoint, [
             'Authorization' => 'Bearer ' . $key->apiKey,
             'HTTP-Referer'  => home_url(),
-            'X-Title'       => 'AI Product Studio',
+            'X-Title'       => 'My AI Agent',
         ], $body);
 
         $text = $decoded['choices'][0]['message']['content'] ?? null;

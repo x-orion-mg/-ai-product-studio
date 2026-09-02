@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace AIProductStudio\AI;
 
+use AIProductStudio\Agent\ProductAgent;
 use AIProductStudio\API\ApiKeyRotator;
 use AIProductStudio\Exceptions\ProviderException;
 use AIProductStudio\Logger\Logger;
 use AIProductStudio\Models\AiResponse;
+use MyAILib\AI\AIManager;
+use MyAILib\Exception\ProviderException as LibProviderException;
+use MyAILib\Session\FileSessionStore;
+use Throwable;
 
 /**
- * High-level AI facade used by the pipeline. Selects the right provider,
- * iterates the rotated pool of API keys and transparently fails over to the
- * next key when a request fails.
+ * AI facade used by the product pipeline. Builds a My AI Lib agent session,
+ * rotates API keys, and fails over to the next key when a request fails.
  */
 final class AiClient
 {
@@ -30,7 +34,7 @@ final class AiClient
     }
 
     /**
-     * Generate content, failing over across the provider's key pool.
+     * Generate content via the product agent, failing over across the key pool.
      *
      * @param array<int, array{mime: string, data: string}> $images
      * @param array<string, mixed>                          $options
@@ -43,26 +47,45 @@ final class AiClient
         $candidates = $this->rotator->candidates($providerSlug);
 
         $lastError = null;
+        $sessionId = (string) ($options['session_id'] ?? uniqid('aips-', true));
 
         foreach ($candidates as $key) {
             try {
-                $response = $provider->generate($key, $prompt, $images, $options);
+                $adapter = new PluginProviderAdapter($provider, $key, $images);
+                $manager = new AIManager(
+                    $adapter,
+                    new FileSessionStore($this->sessionDirectory())
+                );
+
+                $manager->startSession($sessionId);
+
+                $agent = new ProductAgent($manager);
+                $manager->setSystemPrompt($agent->instructions());
+
+                $text = $agent->run($prompt);
+
                 $this->rotator->reportSuccess($key);
 
-                $this->logger->info('Génération IA réussie.', [
+                $this->logger->info('Agent produit : génération réussie.', [
                     'provider' => $providerSlug,
-                    'model'    => $response->model,
+                    'model'    => $key->model,
                     'key_id'   => $key->id,
+                    'agent'    => $agent->name(),
                 ]);
 
-                return $response;
-            } catch (ProviderException $e) {
-                $lastError = $e;
+                return new AiResponse($text, $providerSlug, $key->model !== '' ? $key->model : $providerSlug);
+            } catch (LibProviderException $e) {
+                $lastError = new ProviderException($e->getMessage(), 0, $e);
+            } catch (Throwable $e) {
+                $lastError = new ProviderException($e->getMessage(), 0, $e);
+            }
+
+            if ($lastError !== null) {
                 $this->rotator->reportFailure($key);
                 $this->logger->warning('Échec d\'une clé API, rotation vers la suivante.', [
                     'provider' => $providerSlug,
                     'key_id'   => $key->id,
-                    'error'    => $e->getMessage(),
+                    'error'    => $lastError->getMessage(),
                 ]);
             }
         }
@@ -75,5 +98,16 @@ final class AiClient
                 $lastError !== null ? $lastError->getMessage() : __('inconnue', 'ai-product-studio')
             )
         );
+    }
+
+    private function sessionDirectory(): string
+    {
+        $dir = AIPS_STORAGE_DIR . 'sessions';
+
+        if (! is_dir($dir)) {
+            wp_mkdir_p($dir);
+        }
+
+        return $dir;
     }
 }

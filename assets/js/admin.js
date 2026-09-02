@@ -63,6 +63,28 @@
     }
 
     /* ---------------------------------------------------------------------
+     * Tabs + source (image vs description)
+     * ------------------------------------------------------------------- */
+    function initTabsAndSource() {
+        $('.aips-tab').on('click', function () {
+            var tab = $(this).data('tab');
+            $('.aips-tab').removeClass('is-active');
+            $(this).addClass('is-active');
+            $('.aips-tab-panel').hide().removeClass('is-active');
+            $('.aips-tab-panel[data-panel="' + tab + '"]').show().addClass('is-active');
+        });
+
+        function applySource() {
+            var source = $('#aips-generate-form input[name="source"]:checked').val() || 'image';
+            $('.aips-mode--image').toggle(source === 'image');
+            $('.aips-mode--description').toggle(source === 'description');
+        }
+
+        $('#aips-generate-form').on('change', 'input[name="source"]', applySource);
+        applySource();
+    }
+
+    /* ---------------------------------------------------------------------
      * Product generation with live progress
      * ------------------------------------------------------------------- */
     function initGenerate() {
@@ -144,8 +166,18 @@
         $form.on('submit', function (e) {
             e.preventDefault();
 
-            if (!$('#aips-main-image-id').val()) {
+            var source = $form.find('input[name="source"]:checked').val() || 'image';
+            var description = source === 'image'
+                ? $('#aips-user-description-optional').val()
+                : $('#aips-user-description').val();
+
+            if (source === 'image' && !$('#aips-main-image-id').val()) {
                 window.alert(i18n.noImage || 'Image principale requise.');
+                return;
+            }
+
+            if (source === 'description' && !$.trim(description || '')) {
+                window.alert(i18n.noDescription || 'Description requise.');
                 return;
             }
 
@@ -159,11 +191,12 @@
 
             var payload = {
                 job_id: jobId,
-                main_image_id: $('#aips-main-image-id').val(),
-                gallery_image_ids: $('#aips-gallery-ids').val(),
+                source: source,
+                main_image_id: source === 'image' ? $('#aips-main-image-id').val() : '',
+                gallery_image_ids: source === 'image' ? $('#aips-gallery-ids').val() : '',
                 price: $('#aips-price').val(),
                 sale_price: $('#aips-sale-price').val(),
-                user_description: $('#aips-user-description').val(),
+                user_description: description,
                 related_product_ids: $('#aips-related').val(),
                 provider: $('#aips-provider').val(),
                 prompt_id: $('#aips-prompt').val()
@@ -188,6 +221,120 @@
         $cancelBtn.on('click', function () {
             if (jobId) { post('aips_cancel_generation', { job_id: jobId }); }
             finish(false, i18n.cancelled || 'Annulé.');
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * CSV / Excel import
+     * ------------------------------------------------------------------- */
+    function initImport() {
+        var $form = $('#aips-import-form');
+        if (!$form.length) { return; }
+
+        var rows = [];
+        var $preview = $('#aips-import-preview');
+        var $results = $('#aips-import-results');
+        var $runBtn = $('#aips-run-import-btn');
+        var $parseBtn = $('#aips-parse-import-btn');
+
+        $form.on('submit', function (e) {
+            e.preventDefault();
+            var fileInput = document.getElementById('aips-import-file');
+            if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+                window.alert(i18n.noFile || 'Fichier requis.');
+                return;
+            }
+
+            var fd = new FormData();
+            fd.append('action', 'aips_parse_import');
+            fd.append('nonce', AIPS.nonce);
+            fd.append('import_file', fileInput.files[0]);
+
+            $parseBtn.prop('disabled', true);
+            $preview.html('<p>' + (i18n.parsing || 'Analyse…') + '</p>');
+            $runBtn.hide();
+            $results.empty();
+
+            $.ajax({
+                url: AIPS.ajaxUrl,
+                method: 'POST',
+                data: fd,
+                processData: false,
+                contentType: false
+            }).done(function (res) {
+                $parseBtn.prop('disabled', false);
+                if (!res || !res.success) {
+                    var msg = (res && res.data && res.data.message) ? res.data.message : (i18n.error || 'Erreur');
+                    $preview.html('<div class="notice notice-error"><p>' + msg + '</p></div>');
+                    return;
+                }
+                rows = res.data.rows || [];
+                var html = '<p>' + (i18n.rowsFound || 'Lignes') + ' : ' + rows.length + '</p>';
+                html += '<table class="widefat striped"><thead><tr><th>#</th><th>Title</th><th>Description</th><th>Prix</th></tr></thead><tbody>';
+                rows.forEach(function (row, index) {
+                    html += '<tr><td>' + (index + 1) + '</td><td>' + $('<div>').text(row.title || '').html() +
+                        '</td><td>' + $('<div>').text((row.description || '').slice(0, 140)).html() +
+                        '</td><td>' + $('<div>').text(row.price || '').html() + '</td></tr>';
+                });
+                html += '</tbody></table>';
+                $preview.html(html);
+                $runBtn.toggle(rows.length > 0);
+            }).fail(function () {
+                $parseBtn.prop('disabled', false);
+                $preview.html('<div class="notice notice-error"><p>' + (i18n.error || 'Erreur réseau.') + '</p></div>');
+            });
+        });
+
+        $runBtn.on('click', function () {
+            if (!rows.length) { return; }
+
+            $('#aips-progress').show();
+            $runBtn.prop('disabled', true);
+            $results.empty();
+
+            var index = 0;
+            var created = 0;
+
+            function next() {
+                if (index >= rows.length) {
+                    $runBtn.prop('disabled', false);
+                    $results.prepend('<div class="notice notice-success"><p>' + created + ' / ' + rows.length + ' ' + (i18n.importDone || 'produits créés.') + '</p></div>');
+                    return;
+                }
+
+                var row = rows[index];
+                var n = index + 1;
+                index += 1;
+
+                var payload = {
+                    job_id: 'import-' + Date.now() + '-' + n,
+                    source: 'import',
+                    user_description: row.description || row.title || '',
+                    price: row.price || '',
+                    sale_price: row.sale_price || '',
+                    related_product_ids: row.related_ids || '',
+                    provider: $('#aips-import-provider').val(),
+                    prompt_id: $('#aips-import-prompt').val()
+                };
+
+                post('aips_generate_product', payload).done(function (res) {
+                    if (res && res.success) {
+                        created += 1;
+                        var title = res.data.title || '';
+                        var link = res.data.edit_link ? '<a href="' + res.data.edit_link + '">' + title + '</a>' : title;
+                        $results.append('<p class="aips-import-ok">✔ ' + n + ' — ' + link + '</p>');
+                    } else {
+                        var msg = (res && res.data && res.data.message) ? res.data.message : (i18n.error || 'Erreur');
+                        $results.append('<p class="aips-import-ko">✖ ' + n + ' — ' + msg + '</p>');
+                    }
+                    next();
+                }).fail(function () {
+                    $results.append('<p class="aips-import-ko">✖ ' + n + ' — ' + (i18n.error || 'Erreur réseau.') + '</p>');
+                    next();
+                });
+            }
+
+            next();
         });
     }
 
@@ -311,7 +458,9 @@
 
     $(function () {
         initMediaPickers();
+        initTabsAndSource();
         initGenerate();
+        initImport();
         initPrompts();
         initKeys();
     });

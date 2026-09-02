@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AIProductStudio\Product\Workflow\Steps;
 
 use AIProductStudio\Exceptions\WorkflowException;
+use AIProductStudio\Models\GenerationRequest;
 use AIProductStudio\Prompt\PromptBuilder;
 use AIProductStudio\Prompt\PromptRepository;
 use AIProductStudio\Product\GenerationContext;
@@ -59,7 +60,14 @@ final class BuildPromptStep implements StepInterface
             $context->request->relatedProductIds
         ));
 
+        $sourceLabels = [
+            GenerationRequest::SOURCE_IMAGE       => __('image principale', 'ai-product-studio'),
+            GenerationRequest::SOURCE_DESCRIPTION => __('description texte', 'ai-product-studio'),
+            GenerationRequest::SOURCE_IMPORT      => __('ligne importée (CSV/Excel)', 'ai-product-studio'),
+        ];
+
         $variables = [
+            'source'                  => $sourceLabels[$context->request->source] ?? $context->request->source,
             'description_utilisateur' => $context->request->userDescription,
             'image'                   => (string) ($context->analysis['filename'] ?? ''),
             'categorie'               => '',

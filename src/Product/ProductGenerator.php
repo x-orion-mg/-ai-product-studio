@@ -45,7 +45,7 @@ final class ProductGenerator
      */
     public function generate(GenerationRequest $request, string $jobId): array
     {
-        $context = new GenerationContext($request);
+        $context = new GenerationContext($request, $jobId);
 
         $this->pipeline->onProgress(function (string $key, string $label, string $state) use ($jobId): void {
             $this->updateProgress($jobId, $key, $label, $state);
