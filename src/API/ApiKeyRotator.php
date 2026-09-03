@@ -34,7 +34,10 @@ final class ApiKeyRotator
      *
      * @throws ProviderException when no active key exists.
      */
-    public function candidates(string $provider): array
+    /**
+     * @return array<int, ApiKey>
+     */
+    public function candidates(string $provider, string $model = ''): array
     {
         $keys = $this->repository->activeForProvider($provider);
 
@@ -46,6 +49,25 @@ final class ApiKeyRotator
                     $provider
                 )
             );
+        }
+
+        if ($model !== '') {
+            $matched = array_values(
+                array_filter($keys, static fn (ApiKey $key): bool => $key->model === $model)
+            );
+
+            if ($matched === []) {
+                throw new ProviderException(
+                    sprintf(
+                        /* translators: 1: model, 2: provider. */
+                        __('Aucun modèle « %1$s » configuré pour « %2$s ». Ajoutez une clé API avec ce modèle.', 'ai-product-studio'),
+                        $model,
+                        $provider
+                    )
+                );
+            }
+
+            return $matched;
         }
 
         return $keys;

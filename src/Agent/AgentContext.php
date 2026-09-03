@@ -21,10 +21,25 @@ final class AgentContext
     public function __construct(
         private readonly string $agentId,
         private readonly string $jobId,
-        array $input = []
+        array $input = [],
+        private readonly string $featureId = '',
+        private readonly string $provider = '',
+        private readonly string $model = ''
     ) {
         $this->data      = $input;
         $this->startedAt = microtime(true);
+
+        if ($this->provider !== '') {
+            $this->data['provider'] = $this->provider;
+        }
+
+        if ($this->model !== '') {
+            $this->data['model'] = $this->model;
+        }
+
+        if ($this->featureId !== '') {
+            $this->data['feature_id'] = $this->featureId;
+        }
     }
 
     public function agentId(): string
@@ -35,6 +50,21 @@ final class AgentContext
     public function jobId(): string
     {
         return $this->jobId;
+    }
+
+    public function featureId(): string
+    {
+        return $this->featureId;
+    }
+
+    public function provider(): string
+    {
+        return $this->provider !== '' ? $this->provider : (string) ($this->data['provider'] ?? '');
+    }
+
+    public function model(): string
+    {
+        return $this->model !== '' ? $this->model : (string) ($this->data['model'] ?? '');
     }
 
     public function has(string $key): bool

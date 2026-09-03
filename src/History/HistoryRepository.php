@@ -31,9 +31,13 @@ final class HistoryRepository
         string $status,
         float $duration,
         string $message = '',
-        array $payload = []
+        array $payload = [],
+        string $feature = '',
+        int $entityId = 0
     ): int {
         global $wpdb;
+
+        $entityId = $entityId > 0 ? $entityId : $productId;
 
         $wpdb->insert(
             self::tableName(),
@@ -46,8 +50,10 @@ final class HistoryRepository
                 'message'    => $message,
                 'payload'    => (string) wp_json_encode($payload),
                 'created_at' => current_time('mysql', true),
+                'feature'    => sanitize_key($feature),
+                'entity_id'  => $entityId,
             ],
-            ['%d', '%s', '%d', '%s', '%f', '%s', '%s', '%s']
+            ['%d', '%s', '%d', '%s', '%f', '%s', '%s', '%s', '%s', '%d']
         );
 
         return (int) $wpdb->insert_id;

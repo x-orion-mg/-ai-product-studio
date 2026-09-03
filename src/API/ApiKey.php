@@ -47,6 +47,23 @@ final class ApiKey
     /**
      * Masked representation of the key for display in the admin UI.
      */
+    public function withModel(string $model): self
+    {
+        return new self(
+            $this->id,
+            $this->provider,
+            $this->label,
+            $this->apiKey,
+            $model,
+            $this->endpoint,
+            $this->priority,
+            $this->isActive,
+            $this->errorCount,
+            $this->lastUsedAt,
+            $this->createdAt
+        );
+    }
+
     public function maskedKey(): string
     {
         $length = strlen($this->apiKey);

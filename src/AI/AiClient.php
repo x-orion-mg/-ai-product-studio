@@ -46,7 +46,8 @@ final class AiClient
     public function generate(string $providerSlug, string $prompt, array $images, array $options = []): AiResponse
     {
         $provider     = $this->factory->make($providerSlug);
-        $candidates   = $this->rotator->candidates($providerSlug);
+        $requestedModel = sanitize_text_field((string) ($options['model'] ?? ''));
+        $candidates   = $this->rotator->candidates($providerSlug, $requestedModel);
         $personaClass = $this->resolvePersona($options['persona'] ?? ProductPersona::class);
 
         $lastError = null;
@@ -54,7 +55,8 @@ final class AiClient
 
         foreach ($candidates as $key) {
             try {
-                $adapter = new PluginProviderAdapter($provider, $key, $images);
+                $keyToUse = $requestedModel !== '' ? $key->withModel($requestedModel) : $key;
+                $adapter  = new PluginProviderAdapter($provider, $keyToUse, $images);
                 $manager = new AIManager(
                     $adapter,
                     new FileSessionStore($this->sessionDirectory())
@@ -71,7 +73,7 @@ final class AiClient
 
                 $this->logger->info('Agent IA : génération réussie.', [
                     'provider' => $providerSlug,
-                    'model'    => $key->model,
+                    'model'    => $keyToUse->model,
                     'key_id'   => $key->id,
                     'persona'  => $persona->name(),
                 ]);
