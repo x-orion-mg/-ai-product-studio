@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace AIProductStudio\Core;
 
 use AIProductStudio\Admin\AdminMenu;
+use AIProductStudio\Agent\AgentRegistry;
+use AIProductStudio\Agent\ProgressStore;
+use AIProductStudio\Agent\WorkflowEngine;
 use AIProductStudio\AI\AiClient;
 use AIProductStudio\AI\ProviderFactory;
 use AIProductStudio\Ajax\AjaxRouter;
@@ -19,15 +22,6 @@ use AIProductStudio\Image\ImageCompressor;
 use AIProductStudio\Import\SpreadsheetParser;
 use AIProductStudio\Logger\Logger;
 use AIProductStudio\Product\ProductGenerator;
-use AIProductStudio\Product\Workflow\Pipeline;
-use AIProductStudio\Product\Workflow\Steps\AnalyzeImageStep;
-use AIProductStudio\Product\Workflow\Steps\BuildPromptStep;
-use AIProductStudio\Product\Workflow\Steps\CallAiStep;
-use AIProductStudio\Product\Workflow\Steps\CreateProductStep;
-use AIProductStudio\Product\Workflow\Steps\FinalizeStep;
-use AIProductStudio\Product\Workflow\Steps\PrepareImagesStep;
-use AIProductStudio\Product\Workflow\Steps\SeoStep;
-use AIProductStudio\Product\Workflow\Steps\ValidateResponseStep;
 use AIProductStudio\Prompt\PromptBuilder;
 use AIProductStudio\Prompt\PromptRepository;
 use AIProductStudio\SEO\SeoGenerator;
@@ -37,8 +31,8 @@ use AIProductStudio\Services\Settings;
 use AIProductStudio\WooCommerce\ProductCreator;
 
 /**
- * Central bootstrap and service container of the plugin. Wires every service
- * as a lazy factory and registers the WordPress hooks.
+ * Central bootstrap and service container of the plugin. Wires generic services
+ * only: business agents register themselves via each Agents subfolder bootstrap.
  */
 final class Plugin
 {
@@ -52,6 +46,7 @@ final class Plugin
     {
         $this->container = new Container();
         $this->registerServices();
+        $this->loadAgentBootstraps();
     }
 
     public static function instance(): Plugin
@@ -113,6 +108,22 @@ final class Plugin
         );
     }
 
+    /**
+     * Discover agent bootstraps. Core never imports a concrete agent class.
+     */
+    private function loadAgentBootstraps(): void
+    {
+        $files = glob(AIPS_PLUGIN_DIR . 'src/Agents/*/bootstrap.php') ?: [];
+
+        foreach ($files as $file) {
+            $register = require $file;
+
+            if (is_callable($register)) {
+                add_action('aips_register_agents', $register, 10, 2);
+            }
+        }
+    }
+
     private function registerServices(): void
     {
         $c = $this->container;
@@ -156,33 +167,31 @@ final class Plugin
             $c->get(Settings::class)
         ));
 
-        $c->set(Pipeline::class, static function (Container $c): Pipeline {
-            $steps = [
-                new PrepareImagesStep($c->get(ImageCompressor::class)),
-                new AnalyzeImageStep($c->get(ImageAnalyzer::class)),
-                new BuildPromptStep(
-                    $c->get(PromptRepository::class),
-                    $c->get(PromptBuilder::class),
-                    $c->get(Settings::class)
-                ),
-                new CallAiStep($c->get(AiClient::class)),
-                new ValidateResponseStep(
-                    $c->get(ResponseParser::class),
-                    $c->get(JsonValidator::class)
-                ),
-                new CreateProductStep(
-                    $c->get(ProductCreator::class),
-                    $c->get(Settings::class)
-                ),
-                new SeoStep($c->get(SeoGenerator::class)),
-                new FinalizeStep(),
-            ];
+        $c->set(ProgressStore::class, static fn (): ProgressStore => new ProgressStore());
 
-            return new Pipeline($steps, $c->get(Logger::class));
+        $c->set(WorkflowEngine::class, static fn (Container $c): WorkflowEngine => new WorkflowEngine(
+            $c->get(Logger::class),
+            $c->get(ProgressStore::class)
+        ));
+
+        $c->set(AgentRegistry::class, static function (Container $c): AgentRegistry {
+            $registry = new AgentRegistry();
+
+            /**
+             * Register business agents. Each Agents/<Name>/bootstrap.php hooks here.
+             *
+             * @param AgentRegistry $registry
+             * @param Container     $c
+             */
+            do_action('aips_register_agents', $registry, $c);
+
+            return $registry;
         });
 
         $c->set(ProductGenerator::class, static fn (Container $c): ProductGenerator => new ProductGenerator(
-            $c->get(Pipeline::class),
+            $c->get(AgentRegistry::class),
+            $c->get(WorkflowEngine::class),
+            $c->get(ProgressStore::class),
             $c->get(HistoryRepository::class),
             $c->get(Logger::class)
         ));

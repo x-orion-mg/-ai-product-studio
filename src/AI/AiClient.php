@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace AIProductStudio\AI;
 
-use AIProductStudio\Agent\ProductAgent;
+use AIProductStudio\AI\Personas\ProductPersona;
 use AIProductStudio\API\ApiKeyRotator;
 use AIProductStudio\Exceptions\ProviderException;
 use AIProductStudio\Logger\Logger;
 use AIProductStudio\Models\AiResponse;
+use MyAILib\Agent\AbstractAgent as LibAgent;
 use MyAILib\AI\AIManager;
 use MyAILib\Exception\ProviderException as LibProviderException;
 use MyAILib\Session\FileSessionStore;
 use Throwable;
 
 /**
- * AI facade used by the product pipeline. Builds a My AI Lib agent session,
- * rotates API keys, and fails over to the next key when a request fails.
+ * AI facade used by agent steps. Builds a My AI Lib session, rotates API keys,
+ * and fails over to the next key when a request fails. Steps never depend on
+ * a concrete provider (OpenAI, Gemini, …).
  */
 final class AiClient
 {
@@ -34,7 +36,7 @@ final class AiClient
     }
 
     /**
-     * Generate content via the product agent, failing over across the key pool.
+     * Generate content via an LLM persona, failing over across the key pool.
      *
      * @param array<int, array{mime: string, data: string}> $images
      * @param array<string, mixed>                          $options
@@ -43,8 +45,9 @@ final class AiClient
      */
     public function generate(string $providerSlug, string $prompt, array $images, array $options = []): AiResponse
     {
-        $provider   = $this->factory->make($providerSlug);
-        $candidates = $this->rotator->candidates($providerSlug);
+        $provider     = $this->factory->make($providerSlug);
+        $candidates   = $this->rotator->candidates($providerSlug);
+        $personaClass = $this->resolvePersona($options['persona'] ?? ProductPersona::class);
 
         $lastError = null;
         $sessionId = (string) ($options['session_id'] ?? uniqid('aips-', true));
@@ -59,18 +62,18 @@ final class AiClient
 
                 $manager->startSession($sessionId);
 
-                $agent = new ProductAgent($manager);
-                $manager->setSystemPrompt($agent->instructions());
+                $persona = new $personaClass($manager);
+                $manager->setSystemPrompt($persona->instructions());
 
-                $text = $agent->run($prompt);
+                $text = $persona->run($prompt);
 
                 $this->rotator->reportSuccess($key);
 
-                $this->logger->info('Agent produit : génération réussie.', [
+                $this->logger->info('Agent IA : génération réussie.', [
                     'provider' => $providerSlug,
                     'model'    => $key->model,
                     'key_id'   => $key->id,
-                    'agent'    => $agent->name(),
+                    'persona'  => $persona->name(),
                 ]);
 
                 return new AiResponse($text, $providerSlug, $key->model !== '' ? $key->model : $providerSlug);
@@ -98,6 +101,20 @@ final class AiClient
                 $lastError !== null ? $lastError->getMessage() : __('inconnue', 'ai-product-studio')
             )
         );
+    }
+
+    /**
+     * @param mixed $persona
+     *
+     * @return class-string<LibAgent>
+     */
+    private function resolvePersona(mixed $persona): string
+    {
+        if (! is_string($persona) || ! is_subclass_of($persona, LibAgent::class)) {
+            return ProductPersona::class;
+        }
+
+        return $persona;
     }
 
     private function sessionDirectory(): string

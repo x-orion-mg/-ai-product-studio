@@ -2,16 +2,15 @@
 
 declare(strict_types=1);
 
-namespace AIProductStudio\Agent;
+namespace AIProductStudio\AI\Personas;
 
 use MyAILib\Agent\AbstractAgent;
 
 /**
- * Agent métier : rédige une fiche produit WooCommerce à partir d'une image,
- * d'une description, ou d'une ligne d'import. La validation JSON reste dans
- * le pipeline du plugin (ResponseParser + JsonValidator).
+ * LLM persona used when generating a WooCommerce product sheet.
+ * Business orchestration lives in ProductCreationAgent, not here.
  */
-final class ProductAgent extends AbstractAgent
+final class ProductPersona extends AbstractAgent
 {
     public function name(): string
     {

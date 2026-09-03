@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AIProductStudio\Ajax;
 
+use AIProductStudio\Agent\ProgressStore;
 use AIProductStudio\Exceptions\AIProductStudioException;
 use AIProductStudio\Exceptions\ValidationException;
 use AIProductStudio\Import\SpreadsheetParser;
@@ -166,7 +167,7 @@ final class GenerateController extends AbstractController
 
         $jobId = $this->post('job_id');
         if ($jobId !== '') {
-            set_transient('aips_cancel_' . $jobId, 1, 15 * MINUTE_IN_SECONDS);
+            set_transient(ProgressStore::CANCEL_PREFIX . $jobId, 1, 15 * MINUTE_IN_SECONDS);
         }
 
         $this->success(['cancelled' => true]);
@@ -174,6 +175,6 @@ final class GenerateController extends AbstractController
 
     private function isCancelled(string $jobId): bool
     {
-        return (bool) get_transient('aips_cancel_' . $jobId);
+        return (bool) get_transient(ProgressStore::CANCEL_PREFIX . $jobId);
     }
 }
